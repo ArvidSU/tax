@@ -1,0 +1,352 @@
+/* ============================================
+   Slider Component
+   A highly interactive allocation slider with
+   smooth animations and clear affordances
+   ============================================ */
+
+.slider-container {
+  width: 100%;
+  user-select: none;
+  touch-action: none;
+}
+
+/* ============================================
+   Slider Bar (Main Track)
+   ============================================ */
+
+.slider-bar {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  background: var(--color-surface);
+  border: 2px solid var(--slider-color, var(--color-border));
+  border-radius: var(--radius-2xl);
+  cursor: pointer;
+  overflow: hidden;
+  transition: 
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+/* Hover state - subtle elevation */
+.slider-bar:hover {
+  border-color: var(--slider-color, var(--color-text-muted));
+  box-shadow: 
+    0 0 0 4px color-mix(in srgb, var(--slider-color, var(--color-primary)) 10%, transparent),
+    var(--shadow-md);
+}
+
+/* Active/pressed state */
+.slider-bar:active {
+  transform: scale(0.995);
+}
+
+/* Focus state for accessibility */
+.slider-bar:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 
+    0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent),
+    var(--shadow-md);
+}
+
+/* ============================================
+   Fill Bar (Progress Indicator)
+   ============================================ */
+
+.slider-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--slider-color, var(--color-primary)) 80%, transparent) 0%,
+    var(--slider-color, var(--color-primary)) 100%
+  );
+  border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
+  transition: width 0.08s var(--ease-out);
+  pointer-events: none;
+}
+
+/* Full state - complete rounded corners */
+.slider-fill[data-full="true"] {
+  border-radius: var(--radius-2xl);
+}
+
+/* Shimmer effect on hover */
+.slider-bar:hover .slider-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+/* ============================================
+   Content Overlay (Name & Value)
+   ============================================ */
+
+.slider-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 var(--space-5);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.slider-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60%;
+  letter-spacing: var(--letter-spacing-tight);
+  transition: color var(--duration-normal) var(--ease-out);
+}
+
+.slider-value {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  min-width: 48px;
+  text-align: right;
+  font-feature-settings: 'tnum' 1, 'lnum' 1; /* Tabular numbers for alignment */
+  letter-spacing: var(--letter-spacing-tight);
+  transition: 
+    color var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+/* Value pop animation when changing */
+.slider-bar:active .slider-value {
+  transform: scale(1.05);
+}
+
+/* ============================================
+   Drag Handle
+   ============================================ */
+
+.slider-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: var(--color-text);
+  border: 3px solid var(--slider-color, var(--color-primary));
+  border-radius: var(--radius-full);
+  cursor: grab;
+  z-index: 2;
+  transition: 
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    background-color var(--duration-normal) var(--ease-out);
+  box-shadow: var(--shadow-md);
+}
+
+/* Inner dot indicator */
+.slider-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: var(--slider-color, var(--color-primary));
+  border-radius: var(--radius-full);
+  transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+/* Hover state */
+.slider-handle:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+  box-shadow: 
+    var(--shadow-lg),
+    0 0 0 8px color-mix(in srgb, var(--slider-color, var(--color-primary)) 15%, transparent);
+}
+
+.slider-handle:hover::before {
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Active/dragging state */
+.slider-handle:active,
+.slider-handle.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 
+    var(--shadow-xl),
+    0 0 0 12px color-mix(in srgb, var(--slider-color, var(--color-primary)) 20%, transparent);
+}
+
+.slider-handle.dragging::before {
+  transform: translate(-50%, -50%) scale(1.5);
+}
+
+/* ============================================
+   Expand Indicator
+   ============================================ */
+
+.slider-expand-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1) 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  transition: 
+    transform var(--duration-slow) var(--ease-spring),
+    color var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out);
+  opacity: 0.6;
+}
+
+.slider-container:hover .slider-expand-indicator {
+  opacity: 1;
+  color: var(--color-text-secondary);
+}
+
+.slider-expand-indicator.expanded {
+  transform: rotate(180deg);
+}
+
+/* ============================================
+   Description (Expandable)
+   ============================================ */
+
+.slider-description-wrapper {
+  overflow: hidden;
+  transition: 
+    max-height var(--duration-slow) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-out);
+  max-height: 0;
+  opacity: 0;
+}
+
+.slider-description-wrapper.expanded {
+  max-height: 200px;
+  opacity: 1;
+}
+
+.slider-description {
+  padding: var(--space-3) var(--space-5) var(--space-2);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+  animation: fadeInDown var(--duration-normal) var(--ease-out);
+}
+
+/* ============================================
+   Mobile Optimizations
+   ============================================ */
+
+@media (max-width: 640px) {
+  .slider-bar {
+    height: 56px;
+    min-height: 56px;
+    border-radius: var(--radius-3xl);
+  }
+
+  .slider-fill {
+    border-radius: var(--radius-3xl) 0 0 var(--radius-3xl);
+  }
+
+  .slider-fill[data-full="true"] {
+    border-radius: var(--radius-3xl);
+  }
+
+  .slider-content {
+    padding: 0 var(--space-4);
+  }
+
+  .slider-name {
+    font-size: var(--font-size-sm);
+  }
+
+  .slider-value {
+    font-size: var(--font-size-sm);
+    min-width: 44px;
+  }
+
+  .slider-handle {
+    width: 28px;
+    height: 28px;
+    border-width: 3px;
+  }
+
+  .slider-handle::before {
+    width: 8px;
+    height: 8px;
+  }
+
+  .slider-description {
+    font-size: var(--font-size-xs);
+    padding: var(--space-2-5) var(--space-4) var(--space-1-5);
+  }
+}
+
+/* ============================================
+   Light Mode Adjustments
+   ============================================ */
+
+@media (prefers-color-scheme: light) {
+  .slider-bar {
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .slider-bar:hover {
+    box-shadow: 
+      0 0 0 4px color-mix(in srgb, var(--slider-color, var(--color-primary)) 15%, transparent),
+      var(--shadow-md);
+  }
+
+  .slider-handle {
+    background: white;
+    box-shadow: var(--shadow-md);
+  }
+
+  .slider-fill {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--slider-color, var(--color-primary)) 70%, transparent) 0%,
+      var(--slider-color, var(--color-primary)) 100%
+    );
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .slider-fill,
+  .slider-handle,
+  .slider-description-wrapper,
+  .slider-expand-indicator,
+  .slider-bar,
+  .slider-value {
+    transition: none;
+  }
+  
+  .slider-bar:hover .slider-fill::after {
+    animation: none;
+  }
+}

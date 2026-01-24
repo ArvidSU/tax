@@ -1,117 +1,73 @@
-# Tax Distribution
+# React + TypeScript + Vite
 
-A web application that empowers users to visualize and choose how their tax contributions should be distributed across different categories. Users can input their tax contributions, allocate percentages to various categories using interactive sliders, and view insights about how others are distributing their taxes and the aggregate distribution.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Features
+Currently, two official plugins are available:
 
-- **Tax Contribution Input**: Understand how you contribute to the tax system
-- **Interactive Sliders**: Allocate tax distribution percentages across different categories
-- **Real-time Insights**: View how other users are distributing their taxes
-- **Aggregate Visualization**: See the collective distribution preferences
-- **Mobile-First Design**: Optimized for mobile devices with touch interactions
-- **Multi-Page Navigation**: Swipe through different sets of sliders and views
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Tech Stack
+## React Compiler
 
-- **Frontend**: [Vite](https://vitejs.dev/) + [React](https://react.dev/)
-- **Backend**: [Convex](https://docs.convex.dev/quickstart/react) - Real-time database and backend
-- **Deployment**: [Vercel](https://vercel.com/)
-- **Design**: Mobile-first responsive design
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Getting Started
+## Expanding the ESLint configuration
 
-### Prerequisites
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Convex account (for backend)
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-### Installation
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-```bash
-# Install dependencies
-npm install
-
-# Set up Convex (if not already configured)
-npx convex dev
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-### Development
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-```bash
-# Start development server
-npm run dev
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-## UI Components
-
-### Body
-
-The main content area of the application. It's a scrollable container that displays different sets of sliders for tax distribution categories.
-
-### Pull-Down Sheet
-
-A draggable sheet component that slides down from the top of the screen with two states:
-
-- **Collapsed**: Shows a condensed view with minimal information
-- **Expanded**: Displays detailed information and is vertically scrollable
-
-**Features:**
-- Horizontally scrollable in both states
-- Swiping left/right navigates between different slider sets
-- Handle bar at the bottom for drag-to-expand/collapse interaction
-- Page indicator dots below the handle bar showing current page and total pages
-
-### Slider
-
-Interactive slider components used to set percentage values for tax distribution categories.
-
-**Visual Design:**
-- Horizontal rectangle with a draggable handle
-- Outline indicates the full range
-- Fill indicates the current value
-- Category name displayed on the left
-- Percentage value displayed on the right
-
-**Interaction:**
-- Click to expand and show category description below the slider
-- View automatically scrolls to position expanded slider at the top
-- Other sliders collapse and are pushed down when one expands
-- Values are constrained so the sum of all sliders cannot exceed 100%
-
-**TypeScript Interface:**
-
-```typescript
-interface SliderProperties {
-    id: string;
-    name: string; // e.g., "Healthcare"
-    description: string; // e.g., "The current spend is X money per person per year"
-    value: number; // e.g., 40
-    max: number; // Constrains the value so that the sum of all sliders cannot be more than 100 (controlled by parent)
-    color: string;
-    onChange: (value: number) => void;
-    onClick: (id: string) => void;
-}
-```
-
-## UI Wireframe
-
-![UI Wireframe](ui.excalidraw.png)
-
-## Project Structure
-
-```
-tax_distribution/
-├── .cursor/
-│   └── skills/          # Cursor AI skills and best practices
-├── README.md            # Project documentation
-└── ui.excalidraw.png    # UI wireframe design
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-[Add your license here]

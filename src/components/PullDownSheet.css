@@ -1,0 +1,486 @@
+/* ============================================
+   PullDownSheet Component
+   Expandable sheet showing aggregate data
+   ============================================ */
+
+.pulldown-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: var(--z-fixed);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    180deg,
+    var(--color-surface-elevated) 0%,
+    var(--color-surface) 100%
+  );
+  border-bottom-left-radius: var(--radius-2xl);
+  border-bottom-right-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  touch-action: none;
+  will-change: top;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Subtle border glow */
+.pulldown-sheet::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-border) 20%,
+    var(--color-border) 80%,
+    transparent 100%
+  );
+}
+
+.pulldown-sheet.dragging {
+  transition: none !important;
+}
+
+/* ============================================
+   Content Area
+   ============================================ */
+
+.pulldown-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-4) var(--space-5);
+  touch-action: pan-x pan-y;
+}
+
+/* ============================================
+   Collapsed Summary View
+   ============================================ */
+
+.pulldown-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  gap: var(--space-4);
+}
+
+.summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.summary-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.summary-stats {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.summary-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.preview-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  opacity: 0.9;
+  transition: 
+    transform var(--duration-normal) var(--ease-spring),
+    opacity var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+  box-shadow: var(--shadow-sm);
+}
+
+.preview-dot:hover {
+  transform: scale(1.25);
+  opacity: 1;
+  box-shadow: var(--shadow-md);
+}
+
+.preview-more {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-surface-hover);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+/* ============================================
+   Expanded View
+   ============================================ */
+
+.pulldown-expanded {
+  margin-top: var(--space-5);
+  animation: fadeInDown var(--duration-normal) var(--ease-out);
+}
+
+.expanded-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-5) 0;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.no-data {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--space-8) 0;
+  font-weight: var(--font-weight-medium);
+}
+
+/* ============================================
+   Chart Rows
+   ============================================ */
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 55px;
+  align-items: center;
+  gap: var(--space-4);
+  animation: fadeInUp var(--duration-normal) var(--ease-out);
+  animation-fill-mode: both;
+}
+
+/* Staggered animation */
+.chart-row:nth-child(1) { animation-delay: 0ms; }
+.chart-row:nth-child(2) { animation-delay: 50ms; }
+.chart-row:nth-child(3) { animation-delay: 100ms; }
+.chart-row:nth-child(4) { animation-delay: 150ms; }
+.chart-row:nth-child(5) { animation-delay: 200ms; }
+
+.chart-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-bar-container {
+  height: 28px;
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-inner);
+}
+
+.chart-bar {
+  height: 100%;
+  border-radius: var(--radius-md);
+  transition: width var(--duration-slow) var(--ease-spring);
+  min-width: 4px;
+  position: relative;
+}
+
+/* Shimmer effect on bars */
+.chart-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
+.chart-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  text-align: right;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ============================================
+   Handle Bar
+   ============================================ */
+
+.pulldown-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: auto;
+  transition: background-color var(--duration-normal) var(--ease-out);
+}
+
+.pulldown-handle:hover {
+  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+}
+
+.pulldown-handle:active {
+  cursor: grabbing;
+}
+
+.pulldown-handle:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: calc(-1 * var(--focus-ring-offset));
+  border-radius: var(--radius-sm);
+}
+
+.handle-grip {
+  width: 48px;
+  height: 5px;
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  transition: 
+    background-color var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-spring),
+    width var(--duration-normal) var(--ease-spring);
+}
+
+.pulldown-handle:hover .handle-grip {
+  background: var(--color-text-muted);
+  transform: scaleX(1.1);
+  width: 56px;
+}
+
+.pulldown-handle:active .handle-grip {
+  background: var(--color-text-secondary);
+  transform: scaleX(1.15);
+}
+
+/* ============================================
+   Page Indicator Dots
+   ============================================ */
+
+.pulldown-page-indicators {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-1) 0 var(--space-3);
+}
+
+.pulldown-page-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--color-border);
+  cursor: pointer;
+  padding: 0;
+  min-height: auto;
+  transition: 
+    background-color var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.pulldown-page-dot:hover {
+  background: var(--color-text-muted);
+  transform: scale(1.35);
+}
+
+.pulldown-page-dot.active {
+  background: var(--color-primary);
+  transform: scale(1.35);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+
+.pulldown-page-dot:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* ============================================
+   State-based Visibility
+   ============================================ */
+
+.pulldown-sheet.collapsed .pulldown-expanded {
+  display: none;
+}
+
+/* ============================================
+   Mobile Optimizations
+   ============================================ */
+
+@media (max-width: 640px) {
+  .pulldown-content {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .pulldown-summary {
+    min-height: 48px;
+  }
+
+  .chart-row {
+    grid-template-columns: 80px 1fr 45px;
+    gap: var(--space-3);
+  }
+
+  .chart-label {
+    font-size: var(--font-size-xs);
+  }
+
+  .chart-bar-container {
+    height: 24px;
+  }
+
+  .chart-value {
+    font-size: var(--font-size-xs);
+  }
+
+  .summary-title {
+    font-size: var(--font-size-xs);
+  }
+
+  .summary-stats {
+    font-size: var(--font-size-2xs);
+  }
+
+  .preview-dot {
+    width: 14px;
+    height: 14px;
+  }
+
+  .pulldown-page-indicators {
+    gap: var(--space-2);
+  }
+
+  .pulldown-page-dot {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+/* ============================================
+   Large Screens
+   ============================================ */
+
+@media (min-width: 640px) {
+  .pulldown-sheet {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-left-radius: var(--radius-2xl);
+    border-bottom-right-radius: var(--radius-2xl);
+  }
+}
+
+@media (min-width: 768px) {
+  .pulldown-sheet {
+    border-bottom-left-radius: var(--radius-3xl);
+    border-bottom-right-radius: var(--radius-3xl);
+  }
+}
+
+/* ============================================
+   Light Mode
+   ============================================ */
+
+@media (prefers-color-scheme: light) {
+  .pulldown-sheet {
+    background: linear-gradient(
+      180deg,
+      var(--color-surface) 0%,
+      color-mix(in srgb, var(--color-surface) 95%, var(--color-background)) 100%
+    );
+    box-shadow: 
+      var(--shadow-lg),
+      0 1px 0 0 var(--color-border);
+  }
+
+  .chart-bar-container {
+    background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  }
+
+  .handle-grip {
+    background: var(--color-border);
+  }
+
+  .pulldown-handle:hover .handle-grip {
+    background: var(--color-text-muted);
+  }
+
+  .pulldown-handle:active .handle-grip {
+    background: var(--color-text-secondary);
+  }
+
+  .pulldown-page-dot {
+    background: var(--color-border);
+  }
+
+  .pulldown-page-dot:hover {
+    background: var(--color-text-muted);
+  }
+
+  .preview-more {
+    background: var(--color-border-subtle);
+  }
+}
+
+/* ============================================
+   Reduced Motion
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .pulldown-sheet {
+    transition: none !important;
+  }
+
+  .pulldown-expanded,
+  .chart-row {
+    animation: none;
+  }
+
+  .chart-bar,
+  .chart-bar::after {
+    transition: none;
+    animation: none;
+  }
+
+  .handle-grip,
+  .preview-dot,
+  .pulldown-page-dot {
+    transition: none;
+  }
+}
+
+/* ============================================
+   Safe Area Insets (Notched devices)
+   ============================================ */
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .pulldown-content {
+    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+  }
+}
