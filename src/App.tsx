@@ -7,70 +7,102 @@ import { PullDownSheet } from "./components/PullDownSheet";
 import type { AggregateData } from "./components/PullDownSheet";
 import { Body } from "./components/Body";
 import type { Category } from "./components/Body";
+import type { BreadcrumbItem } from "./components/Breadcrumb";
 import "./App.css";
 
 function App() {
   // 1. Session ID (from localStorage or generated)
   const [sessionId] = useState(() => getSessionId());
 
-  // 2. Current page state
-  const [currentPage, setCurrentPage] = useState(0);
+  // 2. Financial inputs state
+  const [salary, setSalary] = useState<number>(50000);
+  const [taxRate, setTaxRate] = useState<number>(25);
+
+  // 2b. Currency and payrate settings
+  const [currency, setCurrency] = useState<"USD" | "SEK" | "EUR">("USD");
+  const [payrateFrequency, setPayrateFrequency] = useState<"hour" | "day" | "month" | "year">("year");
+
+  // 2. Navigation state - which parent category we're viewing (null = root)
+  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
 
   // 3. Allocations state (Map<categoryId, percentage>)
   const [allocations, setAllocations] = useState<Map<string, number>>(
     new Map()
   );
 
-  // Track if we've initialized allocations from saved distribution
-  const [isInitialized, setIsInitialized] = useState(false);
-
   // 4. Convex queries
-  const categories = useQuery(api.categories.list);
+  const allCategories = useQuery(api.categories.list);
   const distribution = useQuery(api.distributions.getBySession, { sessionId });
   const aggregatesRaw = useQuery(api.distributions.getAggregates);
   const userCount = useQuery(api.distributions.getCount);
 
+  // Get path for breadcrumb when we have a current parent
+  const currentCategoryPath = useQuery(
+    api.categories.getPath,
+    currentParentId ? { categoryId: currentParentId as Id<"categories"> } : "skip"
+  );
+
   // 5. Convex mutations
   const seedCategories = useMutation(api.categories.seed);
-  const upsertDistribution = useMutation(api.distributions.upsert);
+  const upsertDistributionLevel = useMutation(api.distributions.upsertLevel);
+  const createCategory = useMutation(api.categories.create);
 
   // Debounce timer ref
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 6. Effect to seed categories if none exist
   useEffect(() => {
-    if (categories !== undefined && categories.length === 0) {
+    if (allCategories !== undefined && allCategories.length === 0) {
       seedCategories();
     }
-  }, [categories, seedCategories]);
+  }, [allCategories, seedCategories]);
 
-  // 7. Effect to initialize allocations from saved distribution
-  // This effect legitimately initializes state from external data (Convex query) on first load
+  // 7. Sync allocations from saved distribution
+  // Track if we've already initialized from this distribution
+  const initializedDistributionRef = useRef<string | null>(null);
+
+  // Sync allocations from external data source (Convex)
+  // This is a legitimate pattern for initializing state from an external store
   useEffect(() => {
-    if (!isInitialized && distribution !== undefined) {
-      if (distribution && distribution.allocations.length > 0) {
-        const initialAllocations = new Map<string, number>();
-        for (const allocation of distribution.allocations) {
-          initialAllocations.set(allocation.categoryId, allocation.percentage);
+    if (distribution !== undefined) {
+      const distKey = distribution ? JSON.stringify(distribution.allocations) : 'empty';
+      if (initializedDistributionRef.current !== distKey && allocations.size === 0) {
+        initializedDistributionRef.current = distKey;
+        if (distribution && distribution.allocations.length > 0) {
+          const initialAllocations = new Map<string, number>();
+          for (const allocation of distribution.allocations) {
+            initialAllocations.set(allocation.categoryId, allocation.percentage);
+          }
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setAllocations(initialAllocations);
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Legitimate one-time initialization from external data
-        setAllocations(initialAllocations);
       }
-      setIsInitialized(true);
     }
-  }, [distribution, isInitialized]);
+  }, [distribution, allocations.size]);
 
-  // Calculate total pages from categories
-  const totalPages = useMemo(() => {
-    if (!categories || categories.length === 0) return 1;
-    return (
-      Math.max(...categories.map((cat: Category) => cat.page)) + 1
-    );
-  }, [categories]);
+  // Build breadcrumb path from the current category path
+  const breadcrumbPath: BreadcrumbItem[] = useMemo(() => {
+    if (!currentCategoryPath) return [];
+    return currentCategoryPath.map((cat) => ({
+      id: cat._id,
+      name: cat.name,
+    }));
+  }, [currentCategoryPath]);
+
+  // Get categories at current level
+  const currentLevelCategories = useMemo(() => {
+    if (!allCategories) return [];
+    return allCategories.filter((cat) => {
+      if (currentParentId === null) {
+        return cat.parentId === undefined;
+      }
+      return cat.parentId === currentParentId;
+    });
+  }, [allCategories, currentParentId]);
 
   // Transform aggregates to match PullDownSheet's expected format
   const aggregates: AggregateData[] = useMemo(() => {
-    if (!aggregatesRaw || !categories) return [];
+    if (!aggregatesRaw || !allCategories) return [];
 
     interface RawAggregate {
       categoryId: string;
@@ -78,9 +110,13 @@ function App() {
       totalResponses: number;
     }
 
+    // Only show aggregates for current level categories
+    const currentLevelIds = new Set(currentLevelCategories.map((c) => c._id.toString()));
+
     return (aggregatesRaw as RawAggregate[])
+      .filter((agg: RawAggregate) => currentLevelIds.has(agg.categoryId.toString()))
       .map((agg: RawAggregate) => {
-        const category = (categories as Category[]).find(
+        const category = (allCategories as Category[]).find(
           (c: Category) => c._id === agg.categoryId
         );
         if (!category) return null;
@@ -92,7 +128,7 @@ function App() {
         };
       })
       .filter((agg): agg is AggregateData => agg !== null);
-  }, [aggregatesRaw, categories]);
+  }, [aggregatesRaw, allCategories, currentLevelCategories]);
 
   // 8. Handler for allocation changes (debounced save to Convex)
   const handleAllocationChange = useCallback(
@@ -114,34 +150,53 @@ function App() {
       }
 
       saveTimeoutRef.current = setTimeout(() => {
-        // Build allocations array from current state plus the new change
-        setAllocations((currentAllocations) => {
-          const allocationArray = Array.from(currentAllocations.entries())
-            .filter(([, pct]) => pct > 0)
-            .map(([catId, percentage]) => ({
-              categoryId: catId as Id<"categories">,
-              percentage,
-            }));
+        // Build allocations array for current level only
+        // Access the latest allocations through a ref pattern without violating ESLint rules
+        setAllocations((latestAllocations) => {
+          const levelAllocations = currentLevelCategories
+            .map((cat) => ({
+              categoryId: cat._id as Id<"categories">,
+              percentage: latestAllocations.get(cat._id) ?? 0,
+            }))
+            .filter((a) => a.percentage > 0);
 
-          // Only save if there are allocations
-          if (allocationArray.length > 0) {
-            upsertDistribution({
+          // Calculate total for current level
+          const total = levelAllocations.reduce(
+            (sum, a) => sum + a.percentage,
+            0
+          );
+
+          // Only save if allocations sum to 100%
+          if (total === 100) {
+            upsertDistributionLevel({
               sessionId,
-              allocations: allocationArray,
+              parentId: (currentParentId ?? undefined) as Id<"categories"> | undefined,
+              allocations: levelAllocations,
             });
           }
 
-          return currentAllocations;
+          return latestAllocations;
         });
       }, 300);
     },
-    [sessionId, upsertDistribution]
+    [sessionId, currentParentId, currentLevelCategories, upsertDistributionLevel]
   );
 
-  // 9. Handler for page changes
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
+  // 9. Handler for navigation
+  const handleNavigate = useCallback((categoryId: string | null) => {
+    setCurrentParentId(categoryId);
   }, []);
+
+  // 10. Handler for creating new category
+  const handleCreateCategory = useCallback(
+    async (name: string, parentId: string | null) => {
+      await createCategory({
+        name,
+        parentId: parentId ? (parentId as Id<"categories">) : undefined,
+      });
+    },
+    [createCategory]
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -152,8 +207,13 @@ function App() {
     };
   }, []);
 
+  // Calculate tax amount
+  const taxAmount = useMemo(() => {
+    return salary * (taxRate / 100);
+  }, [salary, taxRate]);
+
   // Loading state
-  const isLoading = categories === undefined;
+  const isLoading = allCategories === undefined;
 
   if (isLoading) {
     return (
@@ -170,16 +230,29 @@ function App() {
       <PullDownSheet
         aggregates={aggregates}
         totalUsers={userCount ?? 0}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
+        currentPage={0}
+        totalPages={1}
+        onPageChange={() => {}}
+        salary={salary}
+        taxRate={taxRate}
+        onSalaryChange={setSalary}
+        onTaxRateChange={setTaxRate}
+        taxAmount={taxAmount}
+        currency={currency}
+        onCurrencyChange={setCurrency}
+        payrateFrequency={payrateFrequency}
+        onPayrateFrequencyChange={setPayrateFrequency}
       />
       <Body
-        categories={categories as Category[]}
+        key={currentParentId ?? "root"}
+        categories={allCategories as Category[]}
         allocations={allocations}
-        currentPage={currentPage}
+        currentParentId={currentParentId}
+        breadcrumbPath={breadcrumbPath}
         onAllocationChange={handleAllocationChange}
-        onPageChange={handlePageChange}
+        onNavigate={handleNavigate}
+        onCreateCategory={handleCreateCategory}
+        taxAmount={taxAmount}
       />
     </div>
   );

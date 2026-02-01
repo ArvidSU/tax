@@ -3,6 +3,22 @@
    Main content area with allocation controls
    ============================================ */
 
+.add-category-section {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 8px;
+}
+
+.add-category-section .category-combobox {
+  max-width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .add-category-section {
+    border-top-color: #374151;
+  }
+}
+
 .body-container {
   display: flex;
   flex-direction: column;
@@ -168,6 +184,14 @@
   border: 1px solid color-mix(in srgb, var(--color-danger-500) 30%, transparent);
 }
 
+/* Remaining allocation badge */
+.allocation-remaining {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
 /* ============================================
    Sliders Container
    ============================================ */
@@ -262,6 +286,24 @@
 
 .body-container:hover .swipe-hint {
   opacity: 0.9;
+}
+
+/* ============================================
+   Level Info
+   ============================================ */
+
+.level-info {
+  text-align: center;
+  padding: var(--space-4) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-wide);
+  margin-top: auto;
+}
+
+.level-depth {
+  opacity: 0.7;
 }
 
 /* ============================================

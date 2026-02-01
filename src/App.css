@@ -20,6 +20,8 @@
   min-height: calc(100dvh - 80px);
 }
 
+/* No additional padding needed since financial inputs moved to sheet */
+
 /* ============================================
    Loading State
    ============================================ */

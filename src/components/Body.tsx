@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Slider } from "./Slider";
+import { Breadcrumb } from "./Breadcrumb";
+import type { BreadcrumbItem } from "./Breadcrumb";
+import { CategoryCombobox } from "./CategoryCombobox";
 import "./Body.css";
 
 interface Category {
@@ -8,58 +11,77 @@ interface Category {
   description: string;
   color: string;
   order: number;
-  page: number;
+  page?: number; // Legacy field
+  parentId?: string;
+  depth?: number;
+  hasChildren?: boolean;
 }
 
 interface BodyProps {
   categories: Category[];
   allocations: Map<string, number>; // categoryId -> percentage
-  currentPage: number;
+  currentParentId: string | null; // null for root level
+  breadcrumbPath: BreadcrumbItem[];
   onAllocationChange: (categoryId: string, value: number) => void;
-  onPageChange: (page: number) => void;
+  onNavigate: (categoryId: string | null) => void;
+  onCreateCategory: (name: string, parentId: string | null) => void;
+  taxAmount: number; // Total tax amount for calculating dollar values
 }
 
 export function Body({
   categories,
   allocations,
-  currentPage,
+  currentParentId,
+  breadcrumbPath,
   onAllocationChange,
-  onPageChange,
+  onNavigate,
+  onCreateCategory,
+  taxAmount,
 }: BodyProps) {
   const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
   const sliderRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Filter and sort categories for current page
-  const currentPageCategories = categories
-    .filter((cat) => cat.page === currentPage)
+  // Filter categories for current level
+  const currentLevelCategories = categories
+    .filter((cat) => {
+      if (currentParentId === null) {
+        // Root level: categories without a parent
+        return cat.parentId === undefined;
+      }
+      // Child level: categories whose parent matches
+      return cat.parentId === currentParentId;
+    })
     .sort((a, b) => a.order - b.order);
 
-  // Calculate total pages
-  const totalPages = Math.max(...categories.map((cat) => cat.page), 0) + 1;
-
-  // Calculate total allocated percentage
-  const totalAllocated = Array.from(allocations.values()).reduce(
-    (sum, val) => sum + val,
-    0
-  );
+  // Calculate total allocated percentage at current level
+  const totalAllocated = currentLevelCategories.reduce((sum, cat) => {
+    return sum + (allocations.get(cat._id) ?? 0);
+  }, 0);
 
   // Calculate dynamic max for each slider
   const calculateMax = useCallback(
     (categoryId: string): number => {
-      const othersSum = Array.from(allocations.entries())
-        .filter(([id]) => id !== categoryId)
-        .reduce((sum, [, val]) => sum + val, 0);
+      const othersSum = currentLevelCategories
+        .filter((cat) => cat._id !== categoryId)
+        .reduce((sum, cat) => sum + (allocations.get(cat._id) ?? 0), 0);
       return 100 - othersSum;
     },
-    [allocations]
+    [currentLevelCategories, allocations]
   );
 
   // Handle slider expansion toggle
   const handleSliderClick = useCallback((categoryId: string) => {
     setExpandedSliderId((prev) => (prev === categoryId ? null : categoryId));
   }, []);
+
+  // Handle drill-down into a category's children
+  const handleDrillDown = useCallback(
+    (categoryId: string) => {
+      onNavigate(categoryId);
+    },
+    [onNavigate]
+  );
 
   // Auto-scroll to expanded slider
   useEffect(() => {
@@ -76,55 +98,6 @@ export function Body({
       }
     }
   }, [expandedSliderId]);
-
-  // Collapse expanded slider when page changes
-  // This effect resets UI state when the page prop changes - a standard pattern for derived state reset
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Resetting UI state on prop change is a valid pattern
-    setExpandedSliderId(null);
-  }, [currentPage]);
-
-  // Touch event handlers for swipe navigation
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      touchStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-      };
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      if (!touchStartRef.current || e.changedTouches.length !== 1) {
-        touchStartRef.current = null;
-        return;
-      }
-
-      const touchEnd = {
-        x: e.changedTouches[0].clientX,
-        y: e.changedTouches[0].clientY,
-      };
-
-      const deltaX = touchEnd.x - touchStartRef.current.x;
-      const deltaY = touchEnd.y - touchStartRef.current.y;
-      const minSwipeThreshold = 50;
-
-      // Only handle horizontal swipes (more horizontal than vertical)
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeThreshold) {
-        if (deltaX < 0 && currentPage < totalPages - 1) {
-          // Swipe left - go to next page
-          onPageChange(currentPage + 1);
-        } else if (deltaX > 0 && currentPage > 0) {
-          // Swipe right - go to previous page
-          onPageChange(currentPage - 1);
-        }
-      }
-
-      touchStartRef.current = null;
-    },
-    [currentPage, totalPages, onPageChange]
-  );
 
   // Set slider ref
   const setSliderRef = useCallback(
@@ -148,12 +121,10 @@ export function Body({
   const allocationStatus = getAllocationStatus();
 
   return (
-    <div
-      className="body-container"
-      ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="body-container" ref={containerRef}>
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb path={breadcrumbPath} onNavigate={onNavigate} />
+
       {/* Allocation Summary */}
       <div className={`allocation-summary ${allocationStatus}`}>
         <div className="allocation-bar-container">
@@ -164,16 +135,21 @@ export function Body({
         </div>
         <div className="allocation-text">
           <span className="allocation-percentage">{totalAllocated}%</span>
-          <span className="allocation-label">allocated</span>
+          <span className="allocation-label">allocated at this level</span>
           {totalAllocated > 100 && (
             <span className="allocation-warning">Over budget!</span>
+          )}
+          {totalAllocated < 100 && totalAllocated > 0 && (
+            <span className="allocation-remaining">
+              {100 - totalAllocated}% remaining
+            </span>
           )}
         </div>
       </div>
 
       {/* Sliders */}
       <div className="sliders-container">
-        {currentPageCategories.map((category) => (
+        {currentLevelCategories.map((category) => (
           <div
             key={category._id}
             ref={setSliderRef(category._id)}
@@ -187,40 +163,44 @@ export function Body({
               max={calculateMax(category._id)}
               color={category.color}
               isExpanded={expandedSliderId === category._id}
+              hasChildren={category.hasChildren ?? false}
+              taxAmount={taxAmount}
               onChange={(value) => onAllocationChange(category._id, value)}
               onClick={() => handleSliderClick(category._id)}
+              onDrillDown={() => handleDrillDown(category._id)}
             />
           </div>
         ))}
 
-        {currentPageCategories.length === 0 && (
+        {currentLevelCategories.length === 0 && (
           <div className="no-categories">
-            No categories on this page
+            No sub-categories available
           </div>
         )}
+
+        {/* Add Category Combobox */}
+        <div className="add-category-section">
+          <CategoryCombobox
+            categories={currentLevelCategories}
+            parentId={currentParentId}
+            onSelect={(categoryId) => {
+              if (categoryId) {
+                onNavigate(categoryId);
+              }
+            }}
+            onCreate={onCreateCategory}
+            placeholder="Add or search category..."
+          />
+        </div>
       </div>
 
-      {/* Page Indicator Dots */}
-      {totalPages > 1 && (
-        <div className="page-indicators">
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i}
-              className={`page-dot ${i === currentPage ? "active" : ""}`}
-              onClick={() => onPageChange(i)}
-              aria-label={`Go to page ${i + 1}`}
-              aria-current={i === currentPage ? "page" : undefined}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Swipe hint for mobile */}
-      {totalPages > 1 && (
-        <div className="swipe-hint" aria-hidden="true">
-          <span>Swipe to navigate pages</span>
-        </div>
-      )}
+      {/* Level info */}
+      <div className="level-info">
+        <span className="level-depth">
+          Level {breadcrumbPath.length + 1} •{" "}
+          {currentLevelCategories.length} categories
+        </span>
+      </div>
     </div>
   );
 }

@@ -9,8 +9,11 @@ interface SliderProps {
   max: number; // Dynamic max (controlled by parent to ensure sum ≤ 100)
   color: string; // Fill color
   isExpanded: boolean; // Whether this slider is expanded
+  hasChildren: boolean; // Whether this category has sub-categories
+  taxAmount: number; // Total tax amount for calculating dollar value
   onChange: (value: number) => void;
   onClick: () => void; // To toggle expansion
+  onDrillDown?: () => void; // To navigate into sub-categories
 }
 
 export function Slider({
@@ -21,8 +24,11 @@ export function Slider({
   max,
   color,
   isExpanded,
+  hasChildren,
+  taxAmount,
   onChange,
   onClick,
+  onDrillDown,
 }: SliderProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,9 +53,14 @@ export function Slider({
       // Only handle left mouse button or touch
       if (e.button !== 0 && e.pointerType === "mouse") return;
 
-      // Check if clicking on handle - don't process bar click if so
+      // Check if clicking on handle or drill-down button - don't process bar click if so
       const target = e.target as HTMLElement;
-      if (target.classList.contains("slider-handle")) return;
+      if (
+        target.classList.contains("slider-handle") ||
+        target.classList.contains("slider-drill-down")
+      ) {
+        return;
+      }
 
       e.preventDefault();
       e.stopPropagation();
@@ -66,9 +77,14 @@ export function Slider({
       // Don't toggle expansion if we were dragging
       if (isDragging) return;
 
-      // Check if clicking on handle - don't toggle if so
+      // Check if clicking on handle or drill-down button - don't toggle if so
       const target = e.target as HTMLElement;
-      if (target.classList.contains("slider-handle")) return;
+      if (
+        target.classList.contains("slider-handle") ||
+        target.classList.contains("slider-drill-down")
+      ) {
+        return;
+      }
 
       onClick();
     },
@@ -160,9 +176,25 @@ export function Slider({
     [value, max, onChange, onClick]
   );
 
+  // Handle drill-down button click
+  const handleDrillDown = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      onDrillDown?.();
+    },
+    [onDrillDown]
+  );
+
   // Calculate handle position (clamped to 0-100 for display)
   const displayValue = Math.min(value, 100);
   const handlePosition = `calc(${displayValue}% - ${displayValue > 50 ? 10 : -10}px)`;
+
+  // Calculate dollar amount for this allocation
+  const dollarAmount = (taxAmount * value) / 100;
+  const formattedDollarAmount = dollarAmount.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 
   return (
     <div className="slider-container">
@@ -194,7 +226,20 @@ export function Slider({
         {/* Content overlay */}
         <div className="slider-content">
           <span className="slider-name">{name}</span>
-          <span className="slider-value">{value}%</span>
+          <div className="slider-actions">
+            <span className="slider-value">{value}%</span>
+            <span className="slider-dollar">${formattedDollarAmount}</span>
+            {hasChildren && (
+              <button
+                className="slider-drill-down"
+                onClick={handleDrillDown}
+                aria-label={`View ${name} sub-categories`}
+                title="View sub-categories"
+              >
+                →
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Draggable handle */}

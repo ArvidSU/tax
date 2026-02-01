@@ -14,7 +14,29 @@ interface PullDownSheetProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  salary: number;
+  taxRate: number;
+  onSalaryChange: (salary: number) => void;
+  onTaxRateChange: (taxRate: number) => void;
+  taxAmount: number;
+  currency: "USD" | "SEK" | "EUR";
+  onCurrencyChange: (currency: "USD" | "SEK" | "EUR") => void;
+  payrateFrequency: "hour" | "day" | "month" | "year";
+  onPayrateFrequencyChange: (frequency: "hour" | "day" | "month" | "year") => void;
 }
+
+const currencySymbols: Record<string, string> = {
+  USD: "$",
+  SEK: "kr",
+  EUR: "€",
+};
+
+const frequencyLabels: Record<string, string> = {
+  hour: "/hour",
+  day: "/day",
+  month: "/month",
+  year: "/year",
+};
 
 export function PullDownSheet({
   aggregates,
@@ -22,10 +44,20 @@ export function PullDownSheet({
   currentPage,
   totalPages,
   onPageChange,
+  salary,
+  taxRate,
+  onSalaryChange,
+  onTaxRateChange,
+  taxAmount,
+  currency,
+  onCurrencyChange,
+  payrateFrequency,
+  onPayrateFrequencyChange,
 }: PullDownSheetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number>(0);
@@ -239,6 +271,93 @@ export function PullDownSheet({
         {/* Expanded Chart View */}
         {isExpanded && (
           <div className="pulldown-expanded">
+            {/* Settings Button */}
+            <div className="settings-header">
+              <button
+                className="settings-button"
+                onClick={() => setShowSettings(!showSettings)}
+                aria-label="Toggle settings"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Settings</span>
+              </button>
+            </div>
+
+            {/* Settings Panel */}
+            {showSettings && (
+              <div className="settings-panel">
+                <div className="settings-section">
+                  <label className="settings-label">Currency</label>
+                  <div className="settings-options">
+                    {["USD", "SEK", "EUR"].map((curr) => (
+                      <button
+                        key={curr}
+                        className={`settings-option ${currency === curr ? "active" : ""}`}
+                        onClick={() => onCurrencyChange(curr as "USD" | "SEK" | "EUR")}
+                      >
+                        {curr}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="settings-section">
+                  <label className="settings-label">Pay Frequency</label>
+                  <div className="settings-options">
+                    {["hour", "day", "month", "year"].map((freq) => (
+                      <button
+                        key={freq}
+                        className={`settings-option ${payrateFrequency === freq ? "active" : ""}`}
+                        onClick={() => onPayrateFrequencyChange(freq as "hour" | "day" | "month" | "year")}
+                      >
+                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Financial Inputs */}
+            <div className="financial-inputs-sheet">
+              <div className="input-group-sheet">
+                <label htmlFor="salary-input-sheet">Salary{frequencyLabels[payrateFrequency]}</label>
+                <div className="input-with-prefix-sheet">
+                  <span className="input-prefix-sheet">{currencySymbols[currency]}</span>
+                  <input
+                    id="salary-input-sheet"
+                    type="number"
+                    value={salary}
+                    onChange={(e) => onSalaryChange(Number(e.target.value))}
+                    min="0"
+                    step="1000"
+                    placeholder="50000"
+                  />
+                </div>
+              </div>
+              <div className="input-group-sheet">
+                <label htmlFor="tax-rate-input-sheet">Tax Rate</label>
+                <div className="input-with-suffix-sheet">
+                  <input
+                    id="tax-rate-input-sheet"
+                    type="range"
+                    value={taxRate}
+                    onChange={(e) => onTaxRateChange(Number(e.target.value))}
+                    min="0"
+                    max="100"
+                    step="1"
+                  />
+                  <span className="input-suffix-sheet">{taxRate}%</span>
+                </div>
+              </div>
+              <div className="tax-summary-sheet">
+                <span className="tax-amount-sheet">{currency === "SEK" ? "" : currencySymbols[currency]}{taxAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}{currency === "SEK" ? currencySymbols[currency] : ""}</span>
+                <span className="tax-label-sheet">total tax</span>
+              </div>
+            </div>
+
             <h3 className="expanded-title">Average allocations</h3>
             <div className="chart-container">
               {aggregates.length === 0 ? (

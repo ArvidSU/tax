@@ -476,11 +476,298 @@
 }
 
 /* ============================================
+   Financial Inputs (in Sheet)
+   ============================================ */
+
+.financial-inputs-sheet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-2);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.input-group-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.input-group-sheet label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.input-with-prefix-sheet,
+.input-with-suffix-sheet {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.input-with-prefix-sheet:focus-within,
+.input-with-suffix-sheet:focus-within {
+  border-color: var(--color-primary);
+}
+
+.input-prefix-sheet,
+.input-suffix-sheet {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.financial-inputs-sheet input[type="number"] {
+  width: 100px;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  outline: none;
+}
+
+.financial-inputs-sheet input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.financial-inputs-sheet input[type="number"]::-webkit-outer-spin-button,
+.financial-inputs-sheet input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Range slider styling */
+.input-with-suffix-sheet input[type="range"] {
+  width: 120px;
+  height: 6px;
+  padding: 0;
+  margin: var(--space-2) var(--space-3);
+  background: var(--color-surface-hover);
+  border-radius: var(--radius-full);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.input-with-suffix-sheet input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.input-with-suffix-sheet input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.input-with-suffix-sheet input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  border: none;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.input-with-suffix-sheet input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.1);
+}
+
+.tax-summary-sheet {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.tax-amount-sheet {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.tax-label-sheet {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+@media (max-width: 640px) {
+  .financial-inputs-sheet {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .financial-inputs-sheet input[type="number"] {
+    width: 80px;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .input-with-suffix-sheet input[type="range"] {
+    width: 100px;
+  }
+
+  .tax-summary-sheet {
+    padding-left: var(--space-3);
+    min-width: 80px;
+  }
+
+  .tax-amount-sheet {
+    font-size: var(--font-size-base);
+  }
+}
+
+/* ============================================
    Safe Area Insets (Notched devices)
    ============================================ */
 
 @supports (padding-top: env(safe-area-inset-top)) {
   .pulldown-content {
     padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+  }
+}
+
+/* ============================================
+   Settings Panel
+   ============================================ */
+
+.settings-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+  min-height: auto;
+}
+
+.settings-button:hover {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.settings-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.settings-button svg {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.settings-button:hover svg {
+  transform: rotate(30deg);
+}
+
+.settings-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  animation: fadeInDown var(--duration-normal) var(--ease-out);
+}
+
+.settings-section {
+  margin-bottom: var(--space-4);
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-2);
+}
+
+.settings-options {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.settings-option {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+  min-height: auto;
+}
+
+.settings-option:hover {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-primary);
+}
+
+.settings-option.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.settings-option:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (max-width: 640px) {
+  .settings-panel {
+    padding: var(--space-3);
+  }
+
+  .settings-options {
+    gap: var(--space-1);
+  }
+
+  .settings-option {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
   }
 }

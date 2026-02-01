@@ -115,9 +115,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60%;
+  max-width: 50%;
   letter-spacing: var(--letter-spacing-tight);
   transition: color var(--duration-normal) var(--ease-out);
+}
+
+.slider-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .slider-value {
@@ -128,9 +134,66 @@
   text-align: right;
   font-feature-settings: 'tnum' 1, 'lnum' 1; /* Tabular numbers for alignment */
   letter-spacing: var(--letter-spacing-tight);
-  transition: 
+  transition:
     color var(--duration-normal) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
+}
+
+/* Dollar amount display */
+.slider-dollar {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  min-width: 70px;
+  text-align: right;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  letter-spacing: var(--letter-spacing-tight);
+  transition:
+    color var(--duration-normal) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+/* Value pop animation when changing */
+.slider-bar:active .slider-dollar {
+  transform: scale(1.05);
+}
+
+/* Drill-down button for categories with children */
+.slider-drill-down {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-base);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 28px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.slider-drill-down:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateX(2px);
+}
+
+.slider-drill-down:active {
+  transform: translateX(4px);
+}
+
+.slider-drill-down:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* Value pop animation when changing */
@@ -283,6 +346,11 @@
   .slider-value {
     font-size: var(--font-size-sm);
     min-width: 44px;
+  }
+
+  .slider-dollar {
+    font-size: var(--font-size-xs);
+    min-width: 60px;
   }
 
   .slider-handle {
