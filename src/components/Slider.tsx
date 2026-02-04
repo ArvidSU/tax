@@ -10,7 +10,6 @@ interface SliderProps {
   color: string; // Fill color
   isExpanded: boolean; // Whether this slider is expanded
   hasChildren: boolean; // Whether this category has sub-categories
-  taxAmount: number; // Total tax amount for calculating dollar value
   onChange: (value: number) => void;
   onClick: () => void; // To toggle expansion
   onDrillDown?: () => void; // To navigate into sub-categories
@@ -25,7 +24,6 @@ export function Slider({
   color,
   isExpanded,
   hasChildren,
-  taxAmount,
   onChange,
   onClick,
   onDrillDown,
@@ -189,13 +187,6 @@ export function Slider({
   const displayValue = Math.min(value, 100);
   const handlePosition = `calc(${displayValue}% - ${displayValue > 50 ? 10 : -10}px)`;
 
-  // Calculate dollar amount for this allocation
-  const dollarAmount = (taxAmount * value) / 100;
-  const formattedDollarAmount = dollarAmount.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-
   return (
     <div className="slider-container">
       <div
@@ -225,11 +216,10 @@ export function Slider({
 
         {/* Content overlay */}
         <div className="slider-content">
-          <span className="slider-name">{name}</span>
-          <div className="slider-actions">
-            <span className="slider-value">{value}%</span>
-            <span className="slider-dollar">${formattedDollarAmount}</span>
-            {hasChildren && (
+            <span className="slider-name">{name}</span>
+            <div className="slider-actions">
+              <span className="slider-value">{value}%</span>
+              {hasChildren && (
               <button
                 className="slider-drill-down"
                 onClick={handleDrillDown}

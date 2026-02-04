@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Slider } from "./Slider";
 import { Breadcrumb } from "./Breadcrumb";
 import type { BreadcrumbItem } from "./Breadcrumb";
@@ -25,7 +25,9 @@ interface BodyProps {
   onAllocationChange: (categoryId: string, value: number) => void;
   onNavigate: (categoryId: string | null) => void;
   onCreateCategory: (name: string, parentId: string | null) => void;
-  taxAmount: number; // Total tax amount for calculating dollar values
+  canCreateCategories: boolean;
+  unit: string;
+  symbol: string;
 }
 
 export function Body({
@@ -36,11 +38,23 @@ export function Body({
   onAllocationChange,
   onNavigate,
   onCreateCategory,
-  taxAmount,
+  canCreateCategories,
+  unit,
+  symbol,
 }: BodyProps) {
   const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
   const sliderRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const categoryHasChildren = useMemo(() => {
+    const parents = new Set<string>();
+    categories.forEach((category) => {
+      if (category.parentId) {
+        parents.add(category.parentId);
+      }
+    });
+    return parents;
+  }, [categories]);
 
   // Filter categories for current level
   const currentLevelCategories = categories
@@ -137,13 +151,16 @@ export function Body({
           <span className="allocation-percentage">{totalAllocated}%</span>
           <span className="allocation-label">allocated at this level</span>
           {totalAllocated > 100 && (
-            <span className="allocation-warning">Over budget!</span>
+            <span className="allocation-warning">Over allocated!</span>
           )}
           {totalAllocated < 100 && totalAllocated > 0 && (
             <span className="allocation-remaining">
               {100 - totalAllocated}% remaining
             </span>
           )}
+          <span className="allocation-unit">
+            {symbol} {unit}
+          </span>
         </div>
       </div>
 
@@ -163,8 +180,7 @@ export function Body({
               max={calculateMax(category._id)}
               color={category.color}
               isExpanded={expandedSliderId === category._id}
-              hasChildren={category.hasChildren ?? false}
-              taxAmount={taxAmount}
+              hasChildren={categoryHasChildren.has(category._id)}
               onChange={(value) => onAllocationChange(category._id, value)}
               onClick={() => handleSliderClick(category._id)}
               onDrillDown={() => handleDrillDown(category._id)}
@@ -179,19 +195,21 @@ export function Body({
         )}
 
         {/* Add Category Combobox */}
-        <div className="add-category-section">
-          <CategoryCombobox
-            categories={currentLevelCategories}
-            parentId={currentParentId}
-            onSelect={(categoryId) => {
-              if (categoryId) {
-                onNavigate(categoryId);
-              }
-            }}
-            onCreate={onCreateCategory}
-            placeholder="Add or search category..."
-          />
-        </div>
+        {canCreateCategories && (
+          <div className="add-category-section">
+            <CategoryCombobox
+              categories={currentLevelCategories}
+              parentId={currentParentId}
+              onSelect={(categoryId) => {
+                if (categoryId) {
+                  onNavigate(categoryId);
+                }
+              }}
+              onCreate={onCreateCategory}
+              placeholder="Add or search category..."
+            />
+          </div>
+        )}
       </div>
 
       {/* Level info */}
