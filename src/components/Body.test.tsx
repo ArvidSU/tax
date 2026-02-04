@@ -19,7 +19,9 @@ const defaultProps = {
   onAllocationChange: vi.fn(),
   onNavigate: vi.fn(),
   onCreateCategory: vi.fn(),
-  taxAmount: 12500,
+  canCreateCategories: true,
+  unit: 'USD',
+  symbol: '$',
 };
 
 describe('Body', () => {

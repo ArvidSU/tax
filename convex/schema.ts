@@ -2,32 +2,73 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Hierarchical tax categories
+  // Hierarchical resource categories
   categories: defineTable({
     name: v.string(), // e.g., "Healthcare", "Transportation"
     description: v.string(), // Description shown when slider expands
     color: v.string(), // Color for the slider fill
     order: v.number(), // Display order within same parent
-    // Legacy field - kept for backwards compatibility during migration
-    page: v.optional(v.number()),
-    // New hierarchical fields
     parentId: v.optional(v.id("categories")), // null/undefined for root categories
-    depth: v.optional(v.number()), // 0 for root, 1 for first level children, etc.
-    hasChildren: v.optional(v.boolean()), // true if this category has sub-categories
-  })
-    .index("by_parent", ["parentId"])
-    .index("by_depth", ["depth"]),
+    depth: v.number(), // 0 for root, 1 for first level children, etc.
+  }).index("by_parent", ["parentId"]),
 
-  // User tax distributions
-  distributions: defineTable({
-    sessionId: v.string(), // Anonymous session identifier
-    allocations: v.array(
-      v.object({
-        categoryId: v.id("categories"),
-        percentage: v.number(), // 0-100 (percentage within parent context)
-      })
+  // User resource allocations
+  allocations: defineTable({
+    userId: v.id("users"),
+    boardId: v.id("boards"),
+    categoryId: v.id("categories"),
+    percentage: v.number(),
+  }).index("by_board_user", ["boardId", "userId"]),
+
+  // Boards
+  boards: defineTable({
+    name: v.string(),
+    description: v.string(),
+    public: v.boolean(),
+    settings: v.object({
+      participantsCanCreateCategories: v.boolean(),
+      undistributedStrategy: v.union(
+        v.literal("average"),
+        v.literal("mean"),
+        v.literal("mirror")
+      ),
+      unit: v.string(),
+      symbol: v.string(),
+    }),
+  }),
+
+  // Board members
+  boardMembers: defineTable({
+    boardId: v.id("boards"),
+    userId: v.id("users"),
+    role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
+    userPrefs: v.optional(v.record(v.string(), v.any())),
+  }).index("by_board", ["boardId"])
+    .index("by_user", ["userId"])
+    .index("by_board_and_user", ["boardId", "userId"]),
+
+  // Board invites
+  boardInvites: defineTable({
+    boardId: v.id("boards"),
+    email: v.string(),
+    emailLower: v.string(),
+    invitedBy: v.id("users"),
+    role: v.union(v.literal("participant"), v.literal("viewer")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined")
     ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_session", ["sessionId"]),
+  })
+    .index("by_board", ["boardId"])
+    .index("by_email", ["emailLower"])
+    .index("by_board_and_email", ["boardId", "emailLower"]),
+
+  // Users
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+    secret: v.string(),
+    externalId: v.string(), // ID from Clerk/Auth0
+  }).index("by_external_id", ["externalId"]),
 });

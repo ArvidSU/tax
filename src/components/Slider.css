@@ -139,25 +139,6 @@
     transform var(--duration-fast) var(--ease-out);
 }
 
-/* Dollar amount display */
-.slider-dollar {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  min-width: 70px;
-  text-align: right;
-  font-feature-settings: 'tnum' 1, 'lnum' 1;
-  letter-spacing: var(--letter-spacing-tight);
-  transition:
-    color var(--duration-normal) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
-}
-
-/* Value pop animation when changing */
-.slider-bar:active .slider-dollar {
-  transform: scale(1.05);
-}
-
 /* Drill-down button for categories with children */
 .slider-drill-down {
   pointer-events: auto;
@@ -346,11 +327,6 @@
   .slider-value {
     font-size: var(--font-size-sm);
     min-width: 44px;
-  }
-
-  .slider-dollar {
-    font-size: var(--font-size-xs);
-    min-width: 60px;
   }
 
   .slider-handle {

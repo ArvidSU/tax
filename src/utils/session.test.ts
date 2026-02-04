@@ -1,31 +1,43 @@
-import { describe, it, expect, vi } from 'vitest';
-import { getSessionId } from './session';
+import { describe, it, expect } from "vitest";
+import {
+  getStoredUserId,
+  setStoredUserId,
+  clearStoredUserId,
+  getStoredBoardId,
+  setStoredBoardId,
+  clearStoredBoardId,
+} from "./session";
 
-describe('getSessionId', () => {
-  it('should generate a new UUID and store it if no session exists', () => {
-    const sessionId = getSessionId();
-    
-    expect(sessionId).toBe('test-uuid-1234-5678-9012');
+describe("session storage helpers", () => {
+  it("stores and retrieves user id", () => {
+    setStoredUserId("user-123");
     expect(localStorage.setItem).toHaveBeenCalledWith(
-      'tax-distribution-session',
-      'test-uuid-1234-5678-9012'
+      "allocation-boards-user-id",
+      "user-123"
+    );
+    expect(getStoredUserId()).toBe("user-123");
+  });
+
+  it("clears user id", () => {
+    clearStoredUserId();
+    expect(localStorage.removeItem).toHaveBeenCalledWith(
+      "allocation-boards-user-id"
     );
   });
 
-  it('should return existing session ID from localStorage', () => {
-    // Pre-populate localStorage
-    const existingSessionId = 'existing-session-id';
-    (localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(existingSessionId);
-    
-    const sessionId = getSessionId();
-    
-    expect(sessionId).toBe(existingSessionId);
-    expect(localStorage.setItem).not.toHaveBeenCalled();
+  it("stores and retrieves board id", () => {
+    setStoredBoardId("board-abc");
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      "allocation-boards-board-id",
+      "board-abc"
+    );
+    expect(getStoredBoardId()).toBe("board-abc");
   });
 
-  it('should use the correct storage key', () => {
-    getSessionId();
-    
-    expect(localStorage.getItem).toHaveBeenCalledWith('tax-distribution-session');
+  it("clears board id", () => {
+    clearStoredBoardId();
+    expect(localStorage.removeItem).toHaveBeenCalledWith(
+      "allocation-boards-board-id"
+    );
   });
 });

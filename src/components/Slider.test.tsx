@@ -11,7 +11,6 @@ const defaultProps = {
   color: '#ef4444',
   isExpanded: false,
   hasChildren: false,
-  taxAmount: 12500,
   onChange: vi.fn(),
   onClick: vi.fn(),
 };
