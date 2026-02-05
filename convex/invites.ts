@@ -55,7 +55,7 @@ export const listForUser = query({
       boardName: v.string(),
       boardDescription: v.string(),
       email: v.string(),
-      role: v.union(v.literal("participant"), v.literal("viewer")),
+      role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
       invitedByName: v.string(),
       invitedByEmail: v.string(),
       createdAt: v.number(),
@@ -89,7 +89,7 @@ export const listForBoard = query({
     v.object({
       inviteId: v.id("boardInvites"),
       email: v.string(),
-      role: v.union(v.literal("participant"), v.literal("viewer")),
+      role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
       status: v.union(
         v.literal("pending"),
         v.literal("accepted"),
@@ -132,7 +132,7 @@ export const create = mutation({
     boardId: v.id("boards"),
     email: v.string(),
     invitedBy: v.id("users"),
-    role: v.optional(v.union(v.literal("participant"), v.literal("viewer"))),
+    role: v.optional(v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer"))),
   },
   returns: v.id("boardInvites"),
   handler: async (ctx, args) => {

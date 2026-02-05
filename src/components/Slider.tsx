@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import "./Slider.css";
 
 interface SliderProps {
@@ -11,9 +11,17 @@ interface SliderProps {
   isExpanded: boolean; // Whether this slider is expanded
   hasChildren: boolean; // Whether this category has sub-categories
   canAddCategories?: boolean; // Whether user can add categories (show drill-down even if no children)
+  canDeleteCategory?: boolean; // Whether delete action should be shown
+  canEditCategory?: boolean; // Whether edit/color actions should be shown
   onChange: (value: number) => void;
   onClick: () => void; // To toggle expansion
   onDrillDown?: () => void; // To navigate into sub-categories
+  onDeleteCategory?: () => void; // Delete this category and descendants
+  onUpdateCategory?: (updates: {
+    name?: string;
+    description?: string;
+    color?: string;
+  }) => void; // Update this category
 }
 
 export function Slider({
@@ -26,12 +34,27 @@ export function Slider({
   isExpanded,
   hasChildren,
   canAddCategories,
+  canDeleteCategory,
+  canEditCategory,
   onChange,
   onClick,
   onDrillDown,
+  onDeleteCategory,
+  onUpdateCategory,
 }: SliderProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedColor, setSelectedColor] = useState(color);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editableDescription, setEditableDescription] = useState(description);
+
+  useEffect(() => {
+    setSelectedColor(color);
+  }, [color]);
+
+  useEffect(() => {
+    setEditableDescription(description);
+  }, [description]);
 
   // Calculate value from pointer position
   const calculateValue = useCallback(
@@ -45,30 +68,6 @@ export function Slider({
       return Math.round(Math.max(0, Math.min(max, percentage)));
     },
     [max, value]
-  );
-
-  // Handle pointer down on the track (not handle)
-  const handleBarPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // Only handle left mouse button or touch
-      if (e.button !== 0 && e.pointerType === "mouse") return;
-
-      // Check if clicking on handle or drill-down button - don't process bar click if so
-      const target = e.target as HTMLElement;
-      if (
-        target.classList.contains("slider-handle") ||
-        target.classList.contains("slider-drill-down")
-      ) {
-        return;
-      }
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const newValue = calculateValue(e.clientX);
-      onChange(newValue);
-    },
-    [calculateValue, onChange]
   );
 
   // Handle click for expansion toggle
@@ -185,16 +184,67 @@ export function Slider({
     [onDrillDown]
   );
 
+  const handleDeleteCategory = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      onDeleteCategory?.();
+    },
+    [onDeleteCategory]
+  );
+
+  const handleEditCategory = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      if (!onUpdateCategory) return;
+      if (!isEditingDescription) {
+        setEditableDescription(description);
+        setIsEditingDescription(true);
+        return;
+      }
+
+      onUpdateCategory({
+        description: editableDescription.trim(),
+        color: selectedColor,
+      });
+      setIsEditingDescription(false);
+    },
+    [
+      description,
+      editableDescription,
+      isEditingDescription,
+      onUpdateCategory,
+      selectedColor,
+    ]
+  );
+
+  const handleCancelEdit = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      setEditableDescription(description);
+      setIsEditingDescription(false);
+    },
+    [description]
+  );
+
+  const handleColorChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nextColor = event.target.value;
+      setSelectedColor(nextColor);
+      onUpdateCategory?.({ color: nextColor });
+    },
+    [onUpdateCategory]
+  );
+
   // Calculate handle position (clamped to 0-100 for display)
   const displayValue = Math.min(value, 100);
-  const handlePosition = `calc(${displayValue}% - ${displayValue > 50 ? 10 : -10}px)`;
+  const handlePosition = `clamp(calc(var(--slider-handle-size) / 2), ${displayValue}%, calc(100% - (var(--slider-handle-size) / 2)))`;
 
   return (
     <div className="slider-container">
       <div
         ref={barRef}
         className="slider-bar"
-        style={{ "--slider-color": color } as React.CSSProperties}
+        style={{ "--slider-color": selectedColor } as React.CSSProperties}
         role="slider"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -204,7 +254,6 @@ export function Slider({
         aria-expanded={isExpanded}
         aria-describedby={isExpanded ? `${id}-description` : undefined}
         tabIndex={0}
-        onPointerDown={handleBarPointerDown}
         onClick={handleBarClick}
         onKeyDown={handleKeyDown}
       >
@@ -259,7 +308,62 @@ export function Slider({
         className={`slider-description-wrapper ${isExpanded ? "expanded" : ""}`}
       >
         <div id={`${id}-description`} className="slider-description">
-          {description}
+          {isEditingDescription ? (
+            <textarea
+              className="slider-description-textarea"
+              value={editableDescription}
+              onChange={(event) => setEditableDescription(event.target.value)}
+              aria-label={`Edit ${name} description`}
+              rows={3}
+            />
+          ) : (
+            <div className="slider-description-content">{description}</div>
+          )}
+          <div className="slider-description-actions">
+            {canEditCategory && (
+              <>
+                <input
+                  type="color"
+                  className="slider-color-picker"
+                  value={selectedColor}
+                  onChange={handleColorChange}
+                  aria-label={`Pick color for ${name}`}
+                  title="Pick category color"
+                />
+                <button
+                  type="button"
+                  className="slider-edit-button"
+                  onClick={handleEditCategory}
+                  aria-label={`Edit ${name} category`}
+                  title={isEditingDescription ? "Save description" : "Edit description"}
+                >
+                  {isEditingDescription ? "Save" : "Edit"}
+                </button>
+                {isEditingDescription && (
+                  <button
+                    type="button"
+                    className="slider-cancel-button"
+                    onClick={handleCancelEdit}
+                    aria-label={`Cancel editing ${name} description`}
+                    title="Cancel editing"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </>
+            )}
+            {canDeleteCategory && (
+              <button
+                type="button"
+                className="slider-delete-button"
+                onClick={handleDeleteCategory}
+                aria-label={`Delete ${name} category`}
+                title="Delete category and allocations"
+              >
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ const categoryValidator = v.object({
   depth: v.optional(v.number()),
   hasChildren: v.optional(v.boolean()),
   boardId: v.id("boards"),
+  createdBy: v.optional(v.id("users")),
 });
 
 /**
@@ -1105,9 +1106,183 @@ export const create = mutation({
       parentId: args.parentId,
       depth,
       boardId: args.boardId,
+      createdBy: args.userId,
     });
 
     return categoryId;
+  },
+});
+
+/**
+ * Remove a category, all descendants, and related allocations
+ */
+export const remove = mutation({
+  args: {
+    boardId: v.id("boards"),
+    userId: v.id("users"),
+    categoryId: v.id("categories"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board_and_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.userId)
+      )
+      .unique();
+
+    if (!membership) {
+      throw new ConvexError({
+        code: "NOT_AUTHORIZED",
+        message: "You are not a member of this board",
+      });
+    }
+
+    const category = await ctx.db.get(args.categoryId);
+    if (!category || category.boardId !== args.boardId) {
+      throw new ConvexError({
+        code: "CATEGORY_NOT_FOUND",
+        message: "Category not found",
+      });
+    }
+
+    const canDelete =
+      membership.role === "owner" || category.createdBy === args.userId;
+
+    if (!canDelete) {
+      throw new ConvexError({
+        code: "NOT_AUTHORIZED",
+        message: "Only board owners or category creators can delete categories",
+      });
+    }
+
+    const allCategories = await ctx.db
+      .query("categories")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .collect();
+
+    const childrenByParent = new Map<string, Doc<"categories">[]>();
+    for (const current of allCategories) {
+      if (!current.parentId) continue;
+      const key = current.parentId.toString();
+      const children = childrenByParent.get(key) ?? [];
+      children.push(current);
+      childrenByParent.set(key, children);
+    }
+
+    const toDelete = new Set<string>([args.categoryId.toString()]);
+    const queue = [args.categoryId.toString()];
+    while (queue.length > 0) {
+      const currentId = queue.pop();
+      if (!currentId) break;
+      const children = childrenByParent.get(currentId) ?? [];
+      for (const child of children) {
+        const childId = child._id.toString();
+        if (toDelete.has(childId)) continue;
+        toDelete.add(childId);
+        queue.push(childId);
+      }
+    }
+
+    const boardAllocations = await ctx.db
+      .query("allocations")
+      .filter((q) => q.eq(q.field("boardId"), args.boardId))
+      .collect();
+
+    for (const allocation of boardAllocations) {
+      if (toDelete.has(allocation.categoryId.toString())) {
+        await ctx.db.delete(allocation._id);
+      }
+    }
+
+    const categoriesToDelete = allCategories
+      .filter((current) => toDelete.has(current._id.toString()))
+      .sort((a, b) => (b.depth ?? 0) - (a.depth ?? 0));
+
+    for (const current of categoriesToDelete) {
+      await ctx.db.delete(current._id);
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Update a category (owner or creator only)
+ */
+export const update = mutation({
+  args: {
+    boardId: v.id("boards"),
+    userId: v.id("users"),
+    categoryId: v.id("categories"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    color: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board_and_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.userId)
+      )
+      .unique();
+
+    if (!membership) {
+      throw new ConvexError({
+        code: "NOT_AUTHORIZED",
+        message: "You are not a member of this board",
+      });
+    }
+
+    const category = await ctx.db.get(args.categoryId);
+    if (!category || category.boardId !== args.boardId) {
+      throw new ConvexError({
+        code: "CATEGORY_NOT_FOUND",
+        message: "Category not found",
+      });
+    }
+
+    const canEdit =
+      membership.role === "owner" || category.createdBy === args.userId;
+    if (!canEdit) {
+      throw new ConvexError({
+        code: "NOT_AUTHORIZED",
+        message: "Only board owners or category creators can edit categories",
+      });
+    }
+
+    const patch: {
+      name?: string;
+      description?: string;
+      color?: string;
+    } = {};
+
+    if (args.name !== undefined) {
+      const trimmedName = args.name.trim();
+      if (!trimmedName) {
+        throw new ConvexError({
+          code: "INVALID_NAME",
+          message: "Category name cannot be empty",
+        });
+      }
+      patch.name = trimmedName;
+    }
+
+    if (args.description !== undefined) {
+      patch.description = args.description.trim();
+    }
+
+    if (args.color !== undefined) {
+      patch.color = args.color;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return null;
+    }
+
+    await ctx.db.patch(args.categoryId, patch);
+    return null;
   },
 });
 

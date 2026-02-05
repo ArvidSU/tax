@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useId } from "react";
 import "./CategoryCombobox.css";
 
 interface Category {
@@ -12,7 +12,7 @@ interface CategoryComboboxProps {
   categories: Category[];
   parentId: string | null;
   onSelect: (categoryId: string | null) => void;
-  onCreate: (name: string, parentId: string | null) => void;
+  onCreate: (name: string, parentId: string | null, description?: string) => void;
   placeholder?: string;
 }
 
@@ -24,8 +24,10 @@ export function CategoryCombobox({
   placeholder = "Search or create category...",
 }: CategoryComboboxProps) {
   const [inputValue, setInputValue] = useState("");
+  const [descriptionValue, setDescriptionValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const descriptionInputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +50,9 @@ export function CategoryCombobox({
   // Handle input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
+    if (!e.target.value.trim()) {
+      setDescriptionValue("");
+    }
     setIsOpen(true);
     setHighlightedIndex(-1);
   }, []);
@@ -75,12 +80,14 @@ export function CategoryCombobox({
   const handleCreate = useCallback(() => {
     const trimmedName = inputValue.trim();
     if (trimmedName) {
-      onCreate(trimmedName, parentId);
+      const trimmedDescription = descriptionValue.trim();
+      onCreate(trimmedName, parentId, trimmedDescription || undefined);
       setInputValue("");
+      setDescriptionValue("");
       setIsOpen(false);
       setHighlightedIndex(-1);
     }
-  }, [inputValue, parentId, onCreate]);
+  }, [descriptionValue, inputValue, parentId, onCreate]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
@@ -219,23 +226,36 @@ export function CategoryCombobox({
 
               {/* Create new option */}
               {showCreateOption && (
-                <div
-                  className={`combobox-option create-new ${
-                    highlightedIndex === filteredCategories.length
-                      ? "highlighted"
-                      : ""
-                  }`}
-                  onClick={handleCreate}
-                  onMouseEnter={() =>
-                    setHighlightedIndex(filteredCategories.length)
-                  }
-                  role="option"
-                  aria-selected={highlightedIndex === filteredCategories.length}
-                >
-                  <span className="create-icon">+</span>
-                  <span className="create-text">
-                    Create &ldquo;{inputValue.trim()}&rdquo;
-                  </span>
+                <div className="combobox-create-panel">
+                  <div
+                    className={`combobox-option create-new ${
+                      highlightedIndex === filteredCategories.length
+                        ? "highlighted"
+                        : ""
+                    }`}
+                    onClick={handleCreate}
+                    onMouseEnter={() =>
+                      setHighlightedIndex(filteredCategories.length)
+                    }
+                    role="option"
+                    aria-selected={highlightedIndex === filteredCategories.length}
+                  >
+                    <span className="create-icon">+</span>
+                    <span className="create-text">
+                      Create &ldquo;{inputValue.trim()}&rdquo;
+                    </span>
+                  </div>
+                  <label className="create-description-label" htmlFor={descriptionInputId}>
+                    Description (optional)
+                  </label>
+                  <textarea
+                    id={descriptionInputId}
+                    className="create-description-input"
+                    rows={2}
+                    value={descriptionValue}
+                    onChange={(event) => setDescriptionValue(event.target.value)}
+                    placeholder="Describe this category"
+                  />
                 </div>
               )}
             </>

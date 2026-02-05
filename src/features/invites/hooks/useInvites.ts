@@ -16,7 +16,7 @@ interface UseInvitesReturn {
   invitesForUser: Invite[] | undefined;
   boardInvites: Invite[] | undefined;
   inviteCount: number;
-  sendInvite: (email: string, role: "viewer" | "participant") => Promise<void>;
+  sendInvite: (email: string, role: "owner" | "participant" | "viewer") => Promise<void>;
   revokeInvite: (inviteId: string) => Promise<void>;
   acceptInvite: (inviteId: string) => Promise<void>;
   declineInvite: (inviteId: string) => Promise<void>;
@@ -57,7 +57,7 @@ export function useInvites({
   const inviteCount = invitesForUser?.length ?? 0;
 
   const sendInvite = useCallback(
-    async (email: string, role: "viewer" | "participant"): Promise<void> => {
+    async (email: string, role: "owner" | "participant" | "viewer"): Promise<void> => {
       if (!boardId || !userId) return;
       setSendError(null);
 

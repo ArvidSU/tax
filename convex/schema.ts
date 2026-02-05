@@ -11,6 +11,7 @@ export default defineSchema({
     parentId: v.optional(v.id("categories")), // null/undefined for root categories
     depth: v.number(), // 0 for root, 1 for first level children, etc.
     boardId: v.id("boards"), // Board this category belongs to
+    createdBy: v.optional(v.id("users")), // Creator user id (for delete permissions)
   }).index("by_parent", ["parentId"])
     .index("by_board", ["boardId"]),
 

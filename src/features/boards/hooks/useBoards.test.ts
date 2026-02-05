@@ -16,7 +16,9 @@ vi.mock("../../../../convex/_generated/api", () => ({
     boards: {
       listForUser: "listForUser",
       get: "get",
+      getOwnerCount: "getOwnerCount",
       create: "create",
+      leave: "leave",
       remove: "remove",
     },
   },
@@ -64,15 +66,18 @@ const createMockBoards = () => [
 
 describe("useBoards", () => {
   let mockCreateMutation: ReturnType<typeof vi.fn>;
+  let mockLeaveMutation: ReturnType<typeof vi.fn>;
   let mockRemoveMutation: ReturnType<typeof vi.fn>;
   const mockOnBoardSelect = vi.fn();
 
   beforeEach(() => {
     mockCreateMutation = vi.fn().mockResolvedValue("new-board-id");
+    mockLeaveMutation = vi.fn().mockResolvedValue(undefined);
     mockRemoveMutation = vi.fn().mockResolvedValue(undefined);
     // Return different mocks based on which mutation is being requested
     mockUseMutation.mockImplementation((mutationRef: unknown) => {
       if (mutationRef === "create") return mockCreateMutation;
+      if (mutationRef === "leave") return mockLeaveMutation;
       if (mutationRef === "remove") return mockRemoveMutation;
       return vi.fn();
     });
@@ -357,6 +362,65 @@ describe("useBoards", () => {
 
       expect(result.current.canCreateCategories).toBe(false);
     });
+
+    it("should disable leave board when owner count is 1", () => {
+      const mockBoards = createMockBoards();
+      mockUseQuery
+        .mockReturnValueOnce(mockBoards)
+        .mockReturnValueOnce(mockBoards[0].board)
+        .mockReturnValueOnce(1);
+
+      const { result } = renderHook(() =>
+        useBoards({
+          userId: "user-1",
+          selectedBoardId: "board-1",
+          onBoardSelect: mockOnBoardSelect,
+        })
+      );
+
+      expect(result.current.isLeaveBoardDisabled).toBe(true);
+      expect(result.current.leaveBoardDisabledReason).toContain(
+        "Add another owner"
+      );
+    });
+
+    it("should allow leave board when owner count is greater than 1", () => {
+      const mockBoards = createMockBoards();
+      mockUseQuery
+        .mockReturnValueOnce(mockBoards)
+        .mockReturnValueOnce(mockBoards[0].board)
+        .mockReturnValueOnce(2);
+
+      const { result } = renderHook(() =>
+        useBoards({
+          userId: "user-1",
+          selectedBoardId: "board-1",
+          onBoardSelect: mockOnBoardSelect,
+        })
+      );
+
+      expect(result.current.isLeaveBoardDisabled).toBe(false);
+      expect(result.current.leaveBoardDisabledReason).toBeNull();
+    });
+
+    it("should not disable leave board for non-owners", () => {
+      const mockBoards = createMockBoards();
+      mockUseQuery
+        .mockReturnValueOnce(mockBoards)
+        .mockReturnValueOnce(mockBoards[1].board)
+        .mockReturnValueOnce(1);
+
+      const { result } = renderHook(() =>
+        useBoards({
+          userId: "user-1",
+          selectedBoardId: "board-2",
+          onBoardSelect: mockOnBoardSelect,
+        })
+      );
+
+      expect(result.current.isLeaveBoardDisabled).toBe(false);
+      expect(result.current.leaveBoardDisabledReason).toBeNull();
+    });
   });
 
   describe("createBoard", () => {
@@ -587,6 +651,55 @@ describe("useBoards", () => {
       await result.current.deleteBoard();
 
       expect(mockRemoveMutation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("leaveBoard", () => {
+    it("should leave board after confirmation", async () => {
+      const mockBoards = createMockBoards();
+      mockUseQuery
+        .mockReturnValueOnce(mockBoards)
+        .mockReturnValueOnce(mockBoards[0].board)
+        .mockReturnValueOnce(2);
+      mockConfirm.mockReturnValue(true);
+
+      const { result } = renderHook(() =>
+        useBoards({
+          userId: "user-1",
+          selectedBoardId: "board-1",
+          onBoardSelect: mockOnBoardSelect,
+        })
+      );
+
+      await result.current.leaveBoard();
+
+      expect(mockLeaveMutation).toHaveBeenCalledWith({
+        boardId: "board-1",
+        userId: "user-1",
+      });
+      expect(mockOnBoardSelect).toHaveBeenCalledWith(null);
+    });
+
+    it("should not leave when disabled", async () => {
+      const mockBoards = createMockBoards();
+      mockUseQuery
+        .mockReturnValueOnce(mockBoards)
+        .mockReturnValueOnce(mockBoards[0].board)
+        .mockReturnValueOnce(1);
+      mockConfirm.mockReturnValue(true);
+
+      const { result } = renderHook(() =>
+        useBoards({
+          userId: "user-1",
+          selectedBoardId: "board-1",
+          onBoardSelect: mockOnBoardSelect,
+        })
+      );
+
+      await result.current.leaveBoard();
+
+      expect(mockConfirm).not.toHaveBeenCalled();
+      expect(mockLeaveMutation).not.toHaveBeenCalled();
     });
   });
 

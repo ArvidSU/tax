@@ -71,6 +71,73 @@ describe('Slider', () => {
       const slider = screen.getByRole('slider');
       expect(slider).not.toHaveAttribute('aria-describedby');
     });
+
+    it('should show delete button when category is deletable', () => {
+      render(<Slider {...defaultProps} isExpanded={true} canDeleteCategory={true} />);
+
+      expect(
+        screen.getByRole('button', { name: 'Delete Healthcare category' })
+      ).toBeInTheDocument();
+    });
+
+    it('should call onDeleteCategory when delete button is clicked', () => {
+      const onDeleteCategory = vi.fn();
+      render(
+        <Slider
+          {...defaultProps}
+          isExpanded={true}
+          canDeleteCategory={true}
+          onDeleteCategory={onDeleteCategory}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete Healthcare category' }));
+      expect(onDeleteCategory).toHaveBeenCalled();
+    });
+
+    it('should show color picker and edit button when editable', () => {
+      render(<Slider {...defaultProps} isExpanded={true} canEditCategory={true} />);
+
+      expect(screen.getByLabelText('Pick color for Healthcare')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Edit Healthcare category' })).toBeInTheDocument();
+    });
+
+    it('should edit description and call onUpdateCategory when saved', () => {
+      const onUpdateCategory = vi.fn();
+
+      render(
+        <Slider
+          {...defaultProps}
+          isExpanded={true}
+          canEditCategory={true}
+          onUpdateCategory={onUpdateCategory}
+        />
+      );
+
+      fireEvent.change(screen.getByLabelText('Pick color for Healthcare'), {
+        target: { value: '#123456' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Healthcare category' }));
+      fireEvent.change(screen.getByLabelText('Edit Healthcare description'), {
+        target: { value: 'Updated description' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Healthcare category' }));
+
+      expect(onUpdateCategory).toHaveBeenCalledWith({
+        description: 'Updated description',
+        color: '#123456',
+      });
+    });
+
+    it('should update visible slider color when color picker changes', () => {
+      render(<Slider {...defaultProps} isExpanded={true} canEditCategory={true} />);
+
+      fireEvent.change(screen.getByLabelText('Pick color for Healthcare'), {
+        target: { value: '#123456' },
+      });
+
+      expect(screen.getByRole('slider')).toHaveStyle({ '--slider-color': '#123456' });
+    });
   });
 
   describe('keyboard navigation', () => {
@@ -196,6 +263,16 @@ describe('Slider', () => {
       fireEvent.click(slider);
       
       expect(onClick).toHaveBeenCalled();
+    });
+
+    it('should not call onChange when pointer down on slider bar', () => {
+      const onChange = vi.fn();
+      render(<Slider {...defaultProps} onChange={onChange} />);
+
+      const slider = screen.getByRole('slider');
+      fireEvent.pointerDown(slider, { clientX: 200, button: 0, pointerType: 'mouse' });
+
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 

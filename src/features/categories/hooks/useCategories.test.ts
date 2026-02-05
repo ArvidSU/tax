@@ -17,6 +17,8 @@ vi.mock("../../../../convex/_generated/api", () => ({
     categories: {
       list: "list",
       create: "create",
+      remove: "remove",
+      update: "update",
     },
   },
 }));
@@ -37,10 +39,19 @@ const createMockCategories = (): Category[] => [
 
 describe("useCategories", () => {
   let mockCreateMutation: ReturnType<typeof vi.fn>;
+  let mockRemoveMutation: ReturnType<typeof vi.fn>;
+  let mockUpdateMutation: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockCreateMutation = vi.fn().mockResolvedValue("new-cat-id");
-    mockUseMutation.mockReturnValue(mockCreateMutation);
+    mockRemoveMutation = vi.fn().mockResolvedValue(null);
+    mockUpdateMutation = vi.fn().mockResolvedValue(null);
+    mockUseMutation.mockImplementation((mutation: unknown) => {
+      if (mutation === "create") return mockCreateMutation;
+      if (mutation === "remove") return mockRemoveMutation;
+      if (mutation === "update") return mockUpdateMutation;
+      return vi.fn();
+    });
     mockUseQuery.mockReturnValue([]);
   });
 
@@ -335,6 +346,7 @@ describe("useCategories", () => {
         boardId: "board-1",
         userId: "user-1",
         name: "New Category",
+        description: "",
         parentId: undefined,
       });
     });
@@ -358,7 +370,32 @@ describe("useCategories", () => {
         boardId: "board-1",
         userId: "user-1",
         name: "New Child",
+        description: "",
         parentId: "root-1",
+      });
+    });
+
+    it("should create category with description when provided", async () => {
+      const mockCats = createMockCategories();
+      mockUseQuery.mockReturnValue(mockCats);
+
+      const { result } = renderHook(() =>
+        useCategories({
+          selectedBoardId: "board-1",
+          userId: "user-1",
+          canCreateCategories: true,
+          availableCategoryIds: [],
+        })
+      );
+
+      await result.current.createCategory("New Category", null, "  New description  ");
+
+      expect(mockCreateMutation).toHaveBeenCalledWith({
+        boardId: "board-1",
+        userId: "user-1",
+        name: "New Category",
+        description: "New description",
+        parentId: undefined,
       });
     });
 
@@ -405,6 +442,93 @@ describe("useCategories", () => {
       await result.current.createCategory("New Category", null);
 
       expect(mockCreateMutation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deleteCategory", () => {
+    it("should delete a category when user and board are available", async () => {
+      const mockCats = createMockCategories();
+      mockUseQuery.mockReturnValue(mockCats);
+
+      const { result } = renderHook(() =>
+        useCategories({
+          selectedBoardId: "board-1",
+          userId: "user-1",
+          canCreateCategories: true,
+          availableCategoryIds: [],
+        })
+      );
+
+      await result.current.deleteCategory("child-1-1");
+
+      expect(mockRemoveMutation).toHaveBeenCalledWith({
+        boardId: "board-1",
+        userId: "user-1",
+        categoryId: "child-1-1",
+      });
+    });
+
+    it("should not delete when userId is missing", async () => {
+      const { result } = renderHook(() =>
+        useCategories({
+          selectedBoardId: "board-1",
+          userId: null,
+          canCreateCategories: true,
+          availableCategoryIds: [],
+        })
+      );
+
+      await result.current.deleteCategory("child-1-1");
+
+      expect(mockRemoveMutation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateCategory", () => {
+    it("should update category when user and board are available", async () => {
+      const mockCats = createMockCategories();
+      mockUseQuery.mockReturnValue(mockCats);
+
+      const { result } = renderHook(() =>
+        useCategories({
+          selectedBoardId: "board-1",
+          userId: "user-1",
+          canCreateCategories: true,
+          availableCategoryIds: [],
+        })
+      );
+
+      await result.current.updateCategory("child-1-1", {
+        name: "Updated Name",
+        description: "Updated description",
+        color: "#111111",
+      });
+
+      expect(mockUpdateMutation).toHaveBeenCalledWith({
+        boardId: "board-1",
+        userId: "user-1",
+        categoryId: "child-1-1",
+        name: "Updated Name",
+        description: "Updated description",
+        color: "#111111",
+      });
+    });
+
+    it("should not update category when user is missing", async () => {
+      const { result } = renderHook(() =>
+        useCategories({
+          selectedBoardId: "board-1",
+          userId: null,
+          canCreateCategories: true,
+          availableCategoryIds: [],
+        })
+      );
+
+      await result.current.updateCategory("child-1-1", {
+        color: "#222222",
+      });
+
+      expect(mockUpdateMutation).not.toHaveBeenCalled();
     });
   });
 

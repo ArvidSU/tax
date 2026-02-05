@@ -16,7 +16,16 @@ interface UseCategoriesReturn {
   visibleCategories: Category[];
   rootCategories: Category[];
   currentLevelCategories: (parentId: string | null) => Category[];
-  createCategory: (name: string, parentId: string | null) => Promise<void>;
+  createCategory: (
+    name: string,
+    parentId: string | null,
+    description?: string
+  ) => Promise<void>;
+  deleteCategory: (categoryId: string) => Promise<void>;
+  updateCategory: (
+    categoryId: string,
+    updates: { name?: string; description?: string; color?: string }
+  ) => Promise<void>;
   categoryHasChildren: Set<string>;
 }
 
@@ -31,6 +40,8 @@ export function useCategories({
     selectedBoardId ? { boardId: selectedBoardId as Id<"boards"> } : "skip"
   );
   const createCategoryMutation = useMutation(api.categories.create);
+  const deleteCategoryMutation = useMutation(api.categories.remove);
+  const updateCategoryMutation = useMutation(api.categories.update);
 
   const categoryById = useMemo(() => {
     const map = new Map<string, Category>();
@@ -105,16 +116,49 @@ export function useCategories({
   }, [visibleCategories]);
 
   const createCategory = useCallback(
-    async (name: string, parentId: string | null): Promise<void> => {
+    async (
+      name: string,
+      parentId: string | null,
+      description?: string
+    ): Promise<void> => {
       if (!userId || !selectedBoardId || !canCreateCategories) return;
       await createCategoryMutation({
         boardId: selectedBoardId as Id<"boards">,
         userId: userId as Id<"users">,
         name,
+        description: description?.trim() ?? "",
         parentId: parentId ? (parentId as Id<"categories">) : undefined,
       });
     },
     [createCategoryMutation, userId, selectedBoardId, canCreateCategories]
+  );
+
+  const deleteCategory = useCallback(
+    async (categoryId: string): Promise<void> => {
+      if (!userId || !selectedBoardId) return;
+      await deleteCategoryMutation({
+        boardId: selectedBoardId as Id<"boards">,
+        userId: userId as Id<"users">,
+        categoryId: categoryId as Id<"categories">,
+      });
+    },
+    [deleteCategoryMutation, userId, selectedBoardId]
+  );
+
+  const updateCategory = useCallback(
+    async (
+      categoryId: string,
+      updates: { name?: string; description?: string; color?: string }
+    ): Promise<void> => {
+      if (!userId || !selectedBoardId) return;
+      await updateCategoryMutation({
+        boardId: selectedBoardId as Id<"boards">,
+        userId: userId as Id<"users">,
+        categoryId: categoryId as Id<"categories">,
+        ...updates,
+      });
+    },
+    [updateCategoryMutation, userId, selectedBoardId]
   );
 
   return {
@@ -123,6 +167,8 @@ export function useCategories({
     rootCategories,
     currentLevelCategories,
     createCategory,
+    deleteCategory,
+    updateCategory,
     categoryHasChildren,
   };
 }

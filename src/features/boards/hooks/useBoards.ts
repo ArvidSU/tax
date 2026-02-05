@@ -33,12 +33,18 @@ interface UseBoardsReturn {
   isLoading: boolean;
   isBoardAdmin: boolean;
   boardRole: "owner" | "participant" | "viewer" | null;
+  ownerCount: number | undefined;
+  isLeaveBoardDisabled: boolean;
+  leaveBoardDisabledReason: string | null;
   canCreateCategories: boolean;
   createBoard: (name: string, description: string) => Promise<string | null>;
+  leaveBoard: () => Promise<void>;
   deleteBoard: () => Promise<void>;
   selectBoard: (boardId: string) => void;
   createError: string | null;
+  leaveError: string | null;
   clearCreateError: () => void;
+  clearLeaveError: () => void;
 }
 
 export function useBoards({
@@ -59,7 +65,12 @@ export function useBoards({
   );
 
   const createBoardMutation = useMutation(api.boards.create);
+  const leaveBoardMutation = useMutation(api.boards.leave);
   const removeBoardMutation = useMutation(api.boards.remove);
+  const ownerCount = useQuery(
+    api.boards.getOwnerCount,
+    selectedBoardId ? { boardId: selectedBoardId as Id<"boards"> } : "skip"
+  );
 
   const selectedBoardEntry = boards?.find(
     (entry: BoardEntry) => entry.board._id === selectedBoardId
@@ -74,6 +85,11 @@ export function useBoards({
     (boardRole === "participant" &&
       (settings.participantsCanCreateCategories ??
         defaultBoardSettings.participantsCanCreateCategories));
+  const isOwner = boardRole === "owner";
+  const isLeaveBoardDisabled = isOwner && (ownerCount === undefined || ownerCount <= 1);
+  const leaveBoardDisabledReason = isLeaveBoardDisabled
+    ? "Add another owner before leaving this board."
+    : null;
 
   useEffect(() => {
     if (boards && boards.length > 0 && !selectedBoardId) {
@@ -113,6 +129,35 @@ export function useBoards({
     [userId, createBoardMutation, onBoardSelect]
   );
 
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+
+  const leaveBoard = useCallback(async (): Promise<void> => {
+    if (!selectedBoardId || !userId) return;
+    if (isLeaveBoardDisabled) return;
+
+    const confirmed = window.confirm("Leave this board?");
+    if (!confirmed) return;
+
+    setLeaveError(null);
+
+    try {
+      await leaveBoardMutation({
+        boardId: selectedBoardId as Id<"boards">,
+        userId: userId as Id<"users">,
+      });
+      onBoardSelect(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to leave board";
+      setLeaveError(message);
+    }
+  }, [
+    selectedBoardId,
+    userId,
+    isLeaveBoardDisabled,
+    leaveBoardMutation,
+    onBoardSelect,
+  ]);
+
   const deleteBoard = useCallback(async (): Promise<void> => {
     if (!selectedBoardId || !userId) return;
 
@@ -137,6 +182,7 @@ export function useBoards({
   );
 
   const clearCreateError = useCallback(() => setCreateError(null), []);
+  const clearLeaveError = useCallback(() => setLeaveError(null), []);
 
   return {
     boards: boards as BoardEntry[] | undefined,
@@ -144,12 +190,18 @@ export function useBoards({
     isLoading: boards === undefined,
     isBoardAdmin,
     boardRole,
+    ownerCount: ownerCount as number | undefined,
+    isLeaveBoardDisabled,
+    leaveBoardDisabledReason,
     canCreateCategories,
     createBoard,
+    leaveBoard,
     deleteBoard,
     selectBoard,
     createError,
+    leaveError,
     clearCreateError,
+    clearLeaveError,
   };
 }
 

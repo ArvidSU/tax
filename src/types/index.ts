@@ -6,6 +6,7 @@ export interface Category {
   description: string;
   color: string;
   order: number;
+  createdBy?: string;
   page?: number;
   parentId?: string;
   depth?: number;

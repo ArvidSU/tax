@@ -11,6 +11,7 @@ interface Category {
   description: string;
   color: string;
   order: number;
+  createdBy?: string;
   page?: number; // Legacy field
   parentId?: string;
   depth?: number;
@@ -24,7 +25,18 @@ interface BodyProps {
   breadcrumbPath: BreadcrumbItem[];
   onAllocationChange: (categoryId: string, value: number) => void;
   onNavigate: (categoryId: string | null) => void;
-  onCreateCategory: (name: string, parentId: string | null) => void;
+  onCreateCategory: (
+    name: string,
+    parentId: string | null,
+    description?: string
+  ) => void;
+  onDeleteCategory: (categoryId: string) => void | Promise<void>;
+  onUpdateCategory: (
+    categoryId: string,
+    updates: { name?: string; description?: string; color?: string }
+  ) => void | Promise<void>;
+  canDeleteCategory: (category: Category) => boolean;
+  canEditCategory: (category: Category) => boolean;
   canCreateCategories: boolean;
   unit: string;
   symbol: string;
@@ -38,6 +50,10 @@ export function Body({
   onAllocationChange,
   onNavigate,
   onCreateCategory,
+  onDeleteCategory,
+  onUpdateCategory,
+  canDeleteCategory,
+  canEditCategory,
   canCreateCategories,
   unit,
   symbol,
@@ -97,6 +113,27 @@ export function Body({
     [onNavigate]
   );
 
+  const handleDeleteCategory = useCallback(
+    (category: Category) => {
+      const confirmed = window.confirm(
+        `Delete "${category.name}" and all sub-categories with their allocations?`
+      );
+      if (!confirmed) return;
+      void onDeleteCategory(category._id);
+    },
+    [onDeleteCategory]
+  );
+
+  const handleUpdateCategory = useCallback(
+    (
+      categoryId: string,
+      updates: { name?: string; description?: string; color?: string }
+    ) => {
+      void onUpdateCategory(categoryId, updates);
+    },
+    [onUpdateCategory]
+  );
+
   // Auto-scroll to expanded slider
   useEffect(() => {
     if (expandedSliderId) {
@@ -136,11 +173,11 @@ export function Body({
 
   return (
     <div className="body-container" ref={containerRef}>
-      {/* Breadcrumb Navigation */}
-      <Breadcrumb path={breadcrumbPath} onNavigate={onNavigate} />
-
       {/* Allocation Summary */}
       <div className={`allocation-summary ${allocationStatus}`}>
+        {/* Breadcrumb Navigation */}
+        <Breadcrumb path={breadcrumbPath} onNavigate={onNavigate} />
+
         <div className="allocation-bar-container">
           <div
             className="allocation-bar-fill"
@@ -182,9 +219,15 @@ export function Body({
               isExpanded={expandedSliderId === category._id}
               hasChildren={categoryHasChildren.has(category._id)}
               canAddCategories={canCreateCategories}
+              canDeleteCategory={canDeleteCategory(category)}
+              canEditCategory={canEditCategory(category)}
               onChange={(value) => onAllocationChange(category._id, value)}
               onClick={() => handleSliderClick(category._id)}
               onDrillDown={() => handleDrillDown(category._id)}
+              onDeleteCategory={() => handleDeleteCategory(category)}
+              onUpdateCategory={(updates) =>
+                handleUpdateCategory(category._id, updates)
+              }
             />
           </div>
         ))}

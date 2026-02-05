@@ -189,6 +189,74 @@ export const getMemberCount = query({
 });
 
 /**
+ * Count owners on a board
+ */
+export const getOwnerCount = query({
+  args: { boardId: v.id("boards") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const owners = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .filter((q) => q.eq(q.field("role"), "owner"))
+      .collect();
+    return owners.length;
+  },
+});
+
+/**
+ * Leave a board
+ */
+export const leave = mutation({
+  args: { boardId: v.id("boards"), userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board_and_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.userId)
+      )
+      .unique();
+
+    if (!membership) {
+      throw new ConvexError({
+        code: "MEMBERSHIP_NOT_FOUND",
+        message: "You are not a member of this board",
+      });
+    }
+
+    if (membership.role === "owner") {
+      const ownerCount = await ctx.db
+        .query("boardMembers")
+        .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+        .filter((q) => q.eq(q.field("role"), "owner"))
+        .collect();
+
+      if (ownerCount.length <= 1) {
+        throw new ConvexError({
+          code: "SOLE_OWNER",
+          message: "You cannot leave while you are the only board owner",
+        });
+      }
+    }
+
+    const allocations = await ctx.db
+      .query("allocations")
+      .withIndex("by_board_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.userId)
+      )
+      .collect();
+
+    for (const allocation of allocations) {
+      await ctx.db.delete(allocation._id);
+    }
+
+    await ctx.db.delete(membership._id);
+    return null;
+  },
+});
+
+/**
  * Remove a board and related data (owner only)
  */
 export const remove = mutation({
