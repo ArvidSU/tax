@@ -268,7 +268,7 @@ function App() {
               </div>
             )}
 
-            <div className="category-grid">
+            {boards.isBoardAdmin && (<div className="category-grid">
               {categories.rootCategories.map((category) => (
                 <label key={category._id} className="category-option">
                   <input
@@ -279,12 +279,7 @@ function App() {
                   <span className="category-label">{category.name}</span>
                 </label>
               ))}
-            </div>
-            <div className="category-hint">
-              {categoryFilter.availableCategoryIds.length === 0
-                ? "All categories are available."
-                : `${categoryFilter.availableCategoryIds.length} root categories selected.`}
-            </div>
+            </div>)}
 
             {boards.isBoardAdmin && (
               <div className="board-invites">

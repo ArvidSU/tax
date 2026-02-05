@@ -181,6 +181,7 @@ export function Body({
               color={category.color}
               isExpanded={expandedSliderId === category._id}
               hasChildren={categoryHasChildren.has(category._id)}
+              canAddCategories={canCreateCategories}
               onChange={(value) => onAllocationChange(category._id, value)}
               onClick={() => handleSliderClick(category._id)}
               onDrillDown={() => handleDrillDown(category._id)}

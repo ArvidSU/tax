@@ -26,7 +26,10 @@ export function useCategories({
   canCreateCategories,
   availableCategoryIds,
 }: UseCategoriesProps): UseCategoriesReturn {
-  const allCategories = useQuery(api.categories.list);
+  const allCategories = useQuery(
+    api.categories.list,
+    selectedBoardId ? { boardId: selectedBoardId as Id<"boards"> } : "skip"
+  );
   const createCategoryMutation = useMutation(api.categories.create);
 
   const categoryById = useMemo(() => {

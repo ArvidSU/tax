@@ -10,7 +10,9 @@ export default defineSchema({
     order: v.number(), // Display order within same parent
     parentId: v.optional(v.id("categories")), // null/undefined for root categories
     depth: v.number(), // 0 for root, 1 for first level children, etc.
-  }).index("by_parent", ["parentId"]),
+    boardId: v.id("boards"), // Board this category belongs to
+  }).index("by_parent", ["parentId"])
+    .index("by_board", ["boardId"]),
 
   // User resource allocations
   allocations: defineTable({

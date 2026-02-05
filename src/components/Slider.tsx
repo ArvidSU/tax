@@ -3,13 +3,14 @@ import "./Slider.css";
 
 interface SliderProps {
   id: string;
-  name: string; // e.g., "Healthcare"
+  name: string; // e.g. "Healthcare"
   description: string; // Shown when expanded
   value: number; // Current value 0-100
   max: number; // Dynamic max (controlled by parent to ensure sum ≤ 100)
   color: string; // Fill color
   isExpanded: boolean; // Whether this slider is expanded
   hasChildren: boolean; // Whether this category has sub-categories
+  canAddCategories?: boolean; // Whether user can add categories (show drill-down even if no children)
   onChange: (value: number) => void;
   onClick: () => void; // To toggle expansion
   onDrillDown?: () => void; // To navigate into sub-categories
@@ -24,6 +25,7 @@ export function Slider({
   color,
   isExpanded,
   hasChildren,
+  canAddCategories,
   onChange,
   onClick,
   onDrillDown,
@@ -219,7 +221,7 @@ export function Slider({
             <span className="slider-name">{name}</span>
             <div className="slider-actions">
               <span className="slider-value">{value}%</span>
-              {hasChildren && (
+              {(hasChildren || canAddCategories) && (
               <button
                 className="slider-drill-down"
                 onClick={handleDrillDown}

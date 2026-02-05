@@ -13,16 +13,20 @@ const categoryValidator = v.object({
   parentId: v.optional(v.id("categories")),
   depth: v.optional(v.number()),
   hasChildren: v.optional(v.boolean()),
+  boardId: v.id("boards"),
 });
 
 /**
- * List all categories ordered by depth then order
+ * List all categories for a board ordered by depth then order
  */
 export const list = query({
-  args: {},
+  args: { boardId: v.id("boards") },
   returns: v.array(categoryValidator),
-  handler: async (ctx) => {
-    const categories = await ctx.db.query("categories").collect();
+  handler: async (ctx, args) => {
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .collect();
     // Sort by depth first (treating undefined as 0), then by order within each depth
     return categories.sort((a, b) => {
       const aDepth = a.depth ?? 0;
@@ -34,16 +38,19 @@ export const list = query({
 });
 
 /**
- * Get root categories (parentId is undefined or depth is 0)
+ * Get root categories for a board (parentId is undefined or depth is 0)
  * Handles both old schema (page-based) and new schema (depth-based)
  */
 export const getRoots = query({
-  args: {},
+  args: { boardId: v.id("boards") },
   returns: v.array(categoryValidator),
-  handler: async (ctx) => {
-    // Get all categories and filter for roots
-    const allCategories = await ctx.db.query("categories").collect();
-    
+  handler: async (ctx, args) => {
+    // Get all categories for this board and filter for roots
+    const allCategories = await ctx.db
+      .query("categories")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .collect();
+
     // Root categories are those without a parentId
     // For old schema (page-based), treat all as roots if no depth field
     const roots = allCategories.filter((cat) => {
@@ -51,7 +58,7 @@ export const getRoots = query({
       if (cat.parentId === undefined) return true;
       return false;
     });
-    
+
     return roots.sort((a, b) => a.order - b.order);
   },
 });
@@ -60,14 +67,16 @@ export const getRoots = query({
  * Get children of a specific category
  */
 export const getChildren = query({
-  args: { parentId: v.id("categories") },
+  args: { parentId: v.id("categories"), boardId: v.id("boards") },
   returns: v.array(categoryValidator),
   handler: async (ctx, args) => {
     const children = await ctx.db
       .query("categories")
       .withIndex("by_parent", (q) => q.eq("parentId", args.parentId))
       .collect();
-    return children.sort((a, b) => a.order - b.order);
+    // Filter by boardId for security
+    const filtered = children.filter((cat) => cat.boardId === args.boardId);
+    return filtered.sort((a, b) => a.order - b.order);
   },
 });
 
@@ -1095,6 +1104,7 @@ export const create = mutation({
       order: maxOrder + 1,
       parentId: args.parentId,
       depth,
+      boardId: args.boardId,
     });
 
     return categoryId;
@@ -1107,6 +1117,7 @@ export const create = mutation({
 export const getSiblings = query({
   args: {
     parentId: v.optional(v.id("categories")),
+    boardId: v.id("boards"),
   },
   returns: v.array(categoryValidator),
   handler: async (ctx, args) => {
@@ -1117,7 +1128,9 @@ export const getSiblings = query({
       )
       .collect();
 
-    return siblings.sort((a, b) => a.order - b.order);
+    // Filter by boardId for security
+    const filtered = siblings.filter((cat) => cat.boardId === args.boardId);
+    return filtered.sort((a, b) => a.order - b.order);
   },
 });
 
