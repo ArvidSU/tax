@@ -97,6 +97,18 @@ describe('Body', () => {
       expect(summary).toHaveClass('full');
     });
 
+    it('should show over status when above 100%', () => {
+      const allocations = new Map<string, number>([
+        ['cat-1', 60],
+        ['cat-2', 30],
+        ['cat-3', 20],
+      ]);
+      render(<Body {...defaultProps} allocations={allocations} />);
+
+      const summary = document.querySelector('.allocation-summary');
+      expect(summary).toHaveClass('over');
+    });
+
     it('should base child absolute units on the current level total', () => {
       const allocations = new Map<string, number>([
         ['cat-4', 50],

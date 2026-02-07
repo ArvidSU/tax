@@ -170,8 +170,9 @@ export function Body({
   );
 
   // Determine allocation status for styling
-  const getAllocationStatus = (): "normal" | "warning" | "full" => {
-    if (totalAllocated >= 100) return "full";
+  const getAllocationStatus = (): "normal" | "warning" | "full" | "over" => {
+    if (totalAllocated > 100) return "over";
+    if (totalAllocated === 100) return "full";
     if (totalAllocated >= 90) return "warning";
     return "normal";
   };

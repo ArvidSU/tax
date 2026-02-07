@@ -59,7 +59,34 @@
 .header-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.theme-select {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.theme-select select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.theme-select select:hover {
+  border-color: var(--color-primary-300);
+}
+
+.theme-select select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .ghost-button {

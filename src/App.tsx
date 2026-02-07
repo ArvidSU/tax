@@ -17,6 +17,9 @@ import { UserAllocationPrefs } from "./features/allocations/components/UserAlloc
 import { Body } from "./components/Body";
 import "./App.css";
 
+type ThemeMode = "auto" | "light" | "dark";
+const themeStorageKey = "allocation-boards-theme-mode";
+
 const defaultBoardSettings = {
   participantsCanCreateCategories: true,
   undistributedStrategy: "average" as const,
@@ -30,6 +33,17 @@ const defaultBoardSettings = {
 function App() {
   const { userId, boardId, setUserId, setBoardId, clearSession } = useSession();
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") {
+      return "auto";
+    }
+
+    const stored = window.localStorage.getItem(themeStorageKey);
+    if (stored === "light" || stored === "dark" || stored === "auto") {
+      return stored;
+    }
+    return "auto";
+  });
 
   const auth = useAuth();
   const user = useQuery(
@@ -120,6 +134,22 @@ function App() {
       setCurrentParentId(null);
     }
   }, [categories.visibleCategories, currentParentId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const root = document.documentElement;
+
+    if (themeMode === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", themeMode);
+    }
+
+    window.localStorage.setItem(themeStorageKey, themeMode);
+  }, [themeMode]);
 
   const allocations = useAllocations({
     userId,
@@ -240,6 +270,18 @@ function App() {
               <span className="app-subtitle">Signed in as {user.name}</span>
             </div>
             <div className="header-actions">
+              <label className="theme-select">
+                Theme
+                <select
+                  value={themeMode}
+                  onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+                  aria-label="Theme mode"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
               <button
                 className="create-board-button"
                 onClick={() => setShowCreateBoardForm((prev) => !prev)}
