@@ -25,25 +25,23 @@ export function useBoardSettings({
 }: UseBoardSettingsProps): UseBoardSettingsReturn {
   const [settings, setSettings] = useState<BoardSettings>(defaultSettings);
   const [pendingPatch, setPendingPatch] = useState<Partial<BoardSettings>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const updateBoardSettings = useMutation(api.boards.updateSettings);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastBoardIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!boardId) return;
-    const boardKey = boardId.toString();
-    if (lastBoardIdRef.current === boardKey) return;
+    // When switching boards, reset local form state.
+    setSettings(defaultSettings);
+    setPendingPatch({});
+  }, [boardId]);
 
-    // Schedule state update to avoid setState-in-render warning
-    const timeoutId = setTimeout(() => {
-      lastBoardIdRef.current = boardKey;
-      setSettings(defaultSettings);
-      setPendingPatch({});
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, [boardId, defaultSettings]);
+  useEffect(() => {
+    // Sync with server-provided settings after refresh/loading, but do not
+    // overwrite local edits that are pending debounce save.
+    if (Object.keys(pendingPatch).length > 0 || isSaving) return;
+    setSettings(defaultSettings);
+  }, [defaultSettings, pendingPatch, isSaving]);
 
   const updateSettings = useCallback(
     (patch: Partial<BoardSettings>) => {
@@ -56,6 +54,13 @@ export function useBoardSettings({
   useEffect(() => {
     if (!boardId || !userId || !isAdmin) return;
     if (Object.keys(pendingPatch).length === 0) return;
+    if (isSaving) return;
+    if (
+      settings.maxAllocation > 0 &&
+      settings.minAllocation > settings.maxAllocation
+    ) {
+      return;
+    }
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -63,12 +68,27 @@ export function useBoardSettings({
 
     const patchToSend = pendingPatch;
     timeoutRef.current = setTimeout(() => {
-      setPendingPatch({});
-      updateBoardSettings({
+      setIsSaving(true);
+      void updateBoardSettings({
         boardId: boardId as Id<"boards">,
         userId: userId as Id<"users">,
         settings: patchToSend,
-      });
+      })
+        .then(() => {
+          setPendingPatch((current) => {
+            const next = { ...current };
+            for (const [key, value] of Object.entries(patchToSend)) {
+              const typedKey = key as keyof BoardSettings;
+              if (next[typedKey] === value) {
+                delete next[typedKey];
+              }
+            }
+            return next;
+          });
+        })
+        .finally(() => {
+          setIsSaving(false);
+        });
     }, 300);
 
     return () => {
@@ -76,7 +96,7 @@ export function useBoardSettings({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [pendingPatch, boardId, userId, isAdmin, updateBoardSettings]);
+  }, [pendingPatch, boardId, userId, isAdmin, settings, isSaving, updateBoardSettings]);
 
   useEffect(() => {
     return () => {
@@ -89,7 +109,7 @@ export function useBoardSettings({
   return {
     settings,
     updateSettings,
-    isDirty: Object.keys(pendingPatch).length > 0,
+    isDirty: Object.keys(pendingPatch).length > 0 || isSaving,
   };
 }
 

@@ -48,6 +48,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: null,
           boardId: null,
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -62,6 +63,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: null,
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -84,6 +86,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -107,6 +110,7 @@ describe("useAllocations", () => {
           useAllocations({
             userId: "user-1",
             boardId,
+            currentParentId: null,
             currentLevelCategories: mockCategories,
           }),
         { initialProps: { boardId: "board-1" } }
@@ -140,6 +144,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -160,6 +165,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -175,6 +181,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -194,6 +201,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -212,6 +220,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -229,6 +238,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -250,6 +260,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -272,6 +283,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -296,6 +308,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -317,6 +330,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -354,6 +368,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -406,6 +421,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -446,6 +462,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: null,
           boardId: null,
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -466,6 +483,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );
@@ -544,6 +562,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: currentLevelCats,
         })
       );
@@ -565,6 +584,7 @@ describe("useAllocations", () => {
         useAllocations({
           userId: "user-1",
           boardId: "board-1",
+          currentParentId: null,
           currentLevelCategories: mockCategories,
         })
       );

@@ -26,12 +26,18 @@ export interface BoardSettings {
   undistributedStrategy: "average" | "mean" | "mirror";
   unit: string;
   symbol: string;
+  symbolPosition: "prefix" | "suffix";
+  minAllocation: number;
+  maxAllocation: number;
 }
 
 export interface BoardMember {
   boardId: Id<"boards">;
   userId: Id<"users">;
   role: "owner" | "participant" | "viewer";
+  userPrefs: {
+    allocationTotal: number;
+  };
 }
 
 export interface User {

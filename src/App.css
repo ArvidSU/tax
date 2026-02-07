@@ -267,6 +267,10 @@ details:not([open]) > .board-settings-summary::after {
   margin-top: var(--space-3);
 }
 
+.user-allocation-prefs {
+  max-width: 520px;
+}
+
 .board-settings-config label,
 .board-invite-form label {
   display: flex;
@@ -276,6 +280,7 @@ details:not([open]) > .board-settings-summary::after {
 }
 
 .board-settings-config input,
+.board-settings-config select,
 .board-invite-form input,
 .board-invite-form select {
   border: 1px solid var(--color-border);

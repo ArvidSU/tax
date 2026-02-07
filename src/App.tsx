@@ -13,6 +13,7 @@ import { useCategories } from "./features/categories/hooks/useCategories";
 import { useCategoryFilter } from "./features/categories/hooks/useCategoryFilter";
 import { useAllocations } from "./features/allocations/hooks/useAllocations";
 import { useInvites } from "./features/invites/hooks/useInvites";
+import { UserAllocationPrefs } from "./features/allocations/components/UserAllocationPrefs";
 import { Body } from "./components/Body";
 import "./App.css";
 
@@ -21,6 +22,9 @@ const defaultBoardSettings = {
   undistributedStrategy: "average" as const,
   unit: "USD",
   symbol: "$",
+  symbolPosition: "prefix" as const,
+  minAllocation: 0,
+  maxAllocation: 0,
 };
 
 function App() {
@@ -47,11 +51,19 @@ function App() {
     onBoardSelect: handleBoardSelect,
   });
 
+  const selectedBoardSettings = useMemo(
+    () => ({
+      ...defaultBoardSettings,
+      ...(boards.board?.settings ?? {}),
+    }),
+    [boards.board?.settings]
+  );
+
   const boardSettings = useBoardSettings({
     boardId,
     userId,
     isAdmin: boards.isBoardAdmin,
-    defaultSettings: defaultBoardSettings,
+    defaultSettings: selectedBoardSettings,
   });
 
   const categories = useCategories({
@@ -112,8 +124,43 @@ function App() {
   const allocations = useAllocations({
     userId,
     boardId,
+    currentParentId,
     currentLevelCategories,
   });
+
+  const categoryById = useMemo(
+    () =>
+      new Map(
+        categories.visibleCategories.map((category) => [category._id.toString(), category])
+      ),
+    [categories.visibleCategories]
+  );
+
+  const currentLevelAllocationTotal = useMemo(() => {
+    if (!currentParentId) return boards.allocationTotal;
+
+    const visited = new Set<string>();
+    let cursor: string | undefined = currentParentId;
+    let effectivePercentage = 100;
+
+    while (cursor) {
+      if (visited.has(cursor)) {
+        return 0;
+      }
+      visited.add(cursor);
+
+      const category = categoryById.get(cursor);
+      if (!category) {
+        return 0;
+      }
+
+      const ownPercentage = allocations.allocations.get(cursor) ?? 0;
+      effectivePercentage = (effectivePercentage * ownPercentage) / 100;
+      cursor = category.parentId;
+    }
+
+    return (boards.allocationTotal * effectivePercentage) / 100;
+  }, [allocations.allocations, boards.allocationTotal, categoryById, currentParentId]);
 
   const invites = useInvites({
     userId,
@@ -160,6 +207,16 @@ function App() {
     [boards.isBoardAdmin, userId]
   );
   const canEditCategory = canDeleteCategory;
+  const parseOptionalRangeValue = (raw: string): number => {
+    if (!raw.trim()) return 0;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return parsed;
+  };
+  const rangeIsInvalid =
+    boardSettings.settings.maxAllocation > 0 &&
+    boardSettings.settings.minAllocation > boardSettings.settings.maxAllocation;
+  const symbolPreview = boardSettings.settings.symbol || "¤";
 
   if (userId && user === undefined) {
     return <Loading message="Loading account..." fullScreen />;
@@ -319,6 +376,24 @@ function App() {
                             placeholder="u"
                           />
                         </label>
+                        <label>
+                          Symbol placement
+                          <select
+                            value={boardSettings.settings.symbolPosition}
+                            onChange={(e) =>
+                              boardSettings.updateSettings({
+                                symbolPosition: e.target.value as "prefix" | "suffix",
+                              })
+                            }
+                          >
+                            <option value="prefix">
+                              Prefix ({symbolPreview}100)
+                            </option>
+                            <option value="suffix">
+                              Suffix (100{symbolPreview})
+                            </option>
+                          </select>
+                        </label>
                         <label className="setting-toggle">
                           <span>Allow participants to create categories</span>
                           <input
@@ -333,7 +408,53 @@ function App() {
                             }
                           />
                         </label>
+                        <label>
+                          Minimum allocation total (optional)
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={
+                              boardSettings.settings.minAllocation > 0
+                                ? boardSettings.settings.minAllocation
+                                : ""
+                            }
+                            onChange={(e) =>
+                              boardSettings.updateSettings({
+                                minAllocation: parseOptionalRangeValue(e.target.value),
+                              })
+                            }
+                            placeholder="No minimum"
+                          />
+                        </label>
+                        <label>
+                          Maximum allocation total (optional)
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={
+                              boardSettings.settings.maxAllocation > 0
+                                ? boardSettings.settings.maxAllocation
+                                : ""
+                            }
+                            onChange={(e) =>
+                              boardSettings.updateSettings({
+                                maxAllocation: parseOptionalRangeValue(e.target.value),
+                              })
+                            }
+                            placeholder="No maximum"
+                          />
+                        </label>
                       </div>
+                      <p className="board-membership-note">
+                        Leave min/max blank to allow any member total allocation value.
+                      </p>
+                      {rangeIsInvalid && (
+                        <div className="auth-error">
+                          Minimum allocation cannot be greater than maximum allocation.
+                        </div>
+                      )}
 
                       <div className="category-grid">
                         {categories.rootCategories.map((category) => (
@@ -449,6 +570,16 @@ function App() {
                   Leave Board
                 </button>
               </div>
+              <UserAllocationPrefs
+                boardId={boardId}
+                userId={userId}
+                allocationTotal={boards.allocationTotal}
+                minAllocation={boardSettings.settings.minAllocation}
+                maxAllocation={boardSettings.settings.maxAllocation}
+                unit={boardSettings.settings.unit}
+                symbol={boardSettings.settings.symbol}
+                symbolPosition={boardSettings.settings.symbolPosition}
+              />
 
               {boards.leaveError && <div className="auth-error">{boards.leaveError}</div>}
             </section>
@@ -472,6 +603,8 @@ function App() {
                 canCreateCategories={boards.canCreateCategories}
                 unit={boardSettings.settings.unit}
                 symbol={boardSettings.settings.symbol}
+                symbolPosition={boardSettings.settings.symbolPosition}
+                allocationTotal={currentLevelAllocationTotal}
               />
             </section>
           )}

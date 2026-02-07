@@ -11,7 +11,7 @@ export default defineSchema({
     parentId: v.optional(v.id("categories")), // null/undefined for root categories
     depth: v.number(), // 0 for root, 1 for first level children, etc.
     boardId: v.id("boards"), // Board this category belongs to
-    createdBy: v.optional(v.id("users")), // Creator user id (for delete permissions)
+    createdBy: v.id("users"), // Creator user id (for delete permissions)
   }).index("by_parent", ["parentId"])
     .index("by_board", ["boardId"]),
 
@@ -37,6 +37,9 @@ export default defineSchema({
       ),
       unit: v.string(),
       symbol: v.string(),
+      symbolPosition: v.union(v.literal("prefix"), v.literal("suffix")),
+      minAllocation: v.number(),
+      maxAllocation: v.number(),
     }),
   }),
 
@@ -45,7 +48,9 @@ export default defineSchema({
     boardId: v.id("boards"),
     userId: v.id("users"),
     role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
-    userPrefs: v.optional(v.record(v.string(), v.any())),
+    userPrefs: v.object({
+      allocationTotal: v.number(), // Total allocation units for the user, constrained by the board min, max.
+    }),
   }).index("by_board", ["boardId"])
     .index("by_user", ["userId"])
     .index("by_board_and_user", ["boardId", "userId"]),
@@ -56,7 +61,7 @@ export default defineSchema({
     email: v.string(),
     emailLower: v.string(),
     invitedBy: v.id("users"),
-    role: v.union(v.literal("participant"), v.literal("viewer")),
+    role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
     status: v.union(
       v.literal("pending"),
       v.literal("accepted"),

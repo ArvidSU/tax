@@ -143,6 +143,8 @@ export const getAggregatesByBoardAndParent = query({
     v.object({
       categoryId: v.id("categories"),
       averagePercentage: v.number(),
+      averageAmount: v.number(),
+      totalAmount: v.number(),
       totalResponses: v.number(),
     })
   ),
@@ -168,21 +170,34 @@ export const getAggregatesByBoardAndParent = query({
       return [];
     }
 
-    const totals: Record<string, { sum: number; count: number }> = {};
+    const members = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .collect();
+    const allocationTotalByUserId = new Map(
+      members.map((member) => [member.userId.toString(), member.userPrefs?.allocationTotal ?? 100])
+    );
+
+    const totals: Record<string, { percentageSum: number; amountSum: number; count: number }> = {};
 
     for (const allocation of allocations) {
       const categoryId = allocation.categoryId.toString();
       if (!categoryIds.has(categoryId)) continue;
       if (!totals[categoryId]) {
-        totals[categoryId] = { sum: 0, count: 0 };
+        totals[categoryId] = { percentageSum: 0, amountSum: 0, count: 0 };
       }
-      totals[categoryId].sum += allocation.percentage;
+      const allocationTotal = allocationTotalByUserId.get(allocation.userId.toString()) ?? 100;
+      const absoluteAmount = (allocation.percentage / 100) * allocationTotal;
+      totals[categoryId].percentageSum += allocation.percentage;
+      totals[categoryId].amountSum += absoluteAmount;
       totals[categoryId].count += 1;
     }
 
-    return Object.entries(totals).map(([categoryId, { sum, count }]) => ({
+    return Object.entries(totals).map(([categoryId, { percentageSum, amountSum, count }]) => ({
       categoryId: categoryId as Id<"categories">,
-      averagePercentage: Math.round((sum / count) * 100) / 100,
+      averagePercentage: Math.round((percentageSum / count) * 100) / 100,
+      averageAmount: Math.round((amountSum / count) * 100) / 100,
+      totalAmount: Math.round(amountSum * 100) / 100,
       totalResponses: count,
     }));
   },

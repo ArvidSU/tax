@@ -43,6 +43,20 @@ const toInviteSummary = (
   createdAt: invite._creationTime,
 });
 
+const clampToAllocationRange = (
+  allocationTotal: number,
+  minAllocation: number,
+  maxAllocation: number
+) => {
+  if (minAllocation > 0 && allocationTotal < minAllocation) {
+    return minAllocation;
+  }
+  if (maxAllocation > 0 && allocationTotal > maxAllocation) {
+    return maxAllocation;
+  }
+  return allocationTotal;
+};
+
 /**
  * List invites for a user by email
  */
@@ -239,11 +253,25 @@ export const accept = mutation({
       .unique();
 
     if (!existingMembership) {
+      const board = await ctx.db.get(invite.boardId);
+      if (!board) {
+        throw new ConvexError({
+          code: "BOARD_NOT_FOUND",
+          message: "Board not found",
+        });
+      }
+
       await ctx.db.insert("boardMembers", {
         boardId: invite.boardId,
         userId: args.userId,
         role: invite.role,
-        userPrefs: {},
+        userPrefs: {
+          allocationTotal: clampToAllocationRange(
+            100,
+            board.settings.minAllocation,
+            board.settings.maxAllocation
+          ),
+        },
       });
     }
 

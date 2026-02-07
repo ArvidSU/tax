@@ -7,6 +7,7 @@ import type { Category } from "../../../types";
 interface UseAllocationsProps {
   userId: string | null;
   boardId: string | null;
+  currentParentId: string | null;
   currentLevelCategories: Category[];
 }
 
@@ -21,6 +22,7 @@ interface UseAllocationsReturn {
 export function useAllocations({
   userId,
   boardId,
+  currentParentId,
   currentLevelCategories,
 }: UseAllocationsProps): UseAllocationsReturn {
   // Store allocations in state but initialize from query data via lazy state update
@@ -117,7 +119,9 @@ export function useAllocations({
             upsertDistributionLevel({
               boardId: boardId as Id<"boards">,
               userId: userId as Id<"users">,
-              parentId: undefined,
+              parentId: currentParentId
+                ? (currentParentId as Id<"categories">)
+                : undefined,
               allocations: levelAllocations,
             });
           }
@@ -126,7 +130,7 @@ export function useAllocations({
         });
       }, 300);
     },
-    [userId, boardId, currentLevelCategories, upsertDistributionLevel]
+    [userId, boardId, currentParentId, currentLevelCategories, upsertDistributionLevel]
   );
 
   return {

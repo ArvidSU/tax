@@ -7,6 +7,9 @@ const defaultBoardSettings = {
   undistributedStrategy: "average" as const,
   unit: "USD",
   symbol: "$",
+  symbolPosition: "prefix" as const,
+  minAllocation: 0,
+  maxAllocation: 0,
 };
 
 const boardSettingsValidator = v.object({
@@ -18,6 +21,9 @@ const boardSettingsValidator = v.object({
   ),
   unit: v.string(),
   symbol: v.string(),
+  symbolPosition: v.union(v.literal("prefix"), v.literal("suffix")),
+  minAllocation: v.number(),
+  maxAllocation: v.number(),
 });
 
 const boardSettingsPatchValidator = v.object({
@@ -27,6 +33,13 @@ const boardSettingsPatchValidator = v.object({
   ),
   unit: v.optional(v.string()),
   symbol: v.optional(v.string()),
+  symbolPosition: v.optional(v.union(v.literal("prefix"), v.literal("suffix"))),
+  minAllocation: v.optional(v.number()),
+  maxAllocation: v.optional(v.number()),
+});
+
+const boardMemberPrefsValidator = v.object({
+  allocationTotal: v.number(),
 });
 
 const boardValidator = v.object({
@@ -41,7 +54,39 @@ const boardValidator = v.object({
 const boardWithRoleValidator = v.object({
   board: boardValidator,
   role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
+  userPrefs: boardMemberPrefsValidator,
 });
+
+const validateAllocationRange = (minAllocation: number, maxAllocation: number) => {
+  if (minAllocation < 0 || maxAllocation < 0) {
+    throw new ConvexError({
+      code: "INVALID_RANGE",
+      message: "Allocation range values must be non-negative",
+    });
+  }
+
+  if (maxAllocation > 0 && minAllocation > maxAllocation) {
+    throw new ConvexError({
+      code: "INVALID_RANGE",
+      message: "Minimum allocation cannot exceed maximum allocation",
+    });
+  }
+};
+
+const clampToAllocationRange = (
+  allocationTotal: number,
+  settings: { minAllocation: number; maxAllocation: number }
+) => {
+  if (settings.minAllocation > 0 && allocationTotal < settings.minAllocation) {
+    return settings.minAllocation;
+  }
+
+  if (settings.maxAllocation > 0 && allocationTotal > settings.maxAllocation) {
+    return settings.maxAllocation;
+  }
+
+  return allocationTotal;
+};
 
 /**
  * Create a board and assign the owner
@@ -60,6 +105,8 @@ export const create = mutation({
       ...defaultBoardSettings,
       ...(args.settings ?? {}),
     };
+    validateAllocationRange(settings.minAllocation, settings.maxAllocation);
+
     const boardId = await ctx.db.insert("boards", {
       name: args.name,
       description: args.description ?? "",
@@ -71,7 +118,9 @@ export const create = mutation({
       boardId,
       userId: args.ownerId,
       role: "owner",
-      userPrefs: {},
+      userPrefs: {
+        allocationTotal: clampToAllocationRange(100, settings),
+      },
     });
 
     return boardId;
@@ -105,9 +154,16 @@ export const listForUser = query({
     for (const membership of memberships) {
       const board = await ctx.db.get(membership.boardId);
       if (!board) continue;
+      const allocationTotal = clampToAllocationRange(
+        membership.userPrefs?.allocationTotal ?? 100,
+        board.settings
+      );
       results.push({
         board,
         role: membership.role,
+        userPrefs: {
+          allocationTotal,
+        },
       });
     }
 
@@ -165,9 +221,104 @@ export const updateSettings = mutation({
         args.settings.symbol ??
         board.settings.symbol ??
         defaultBoardSettings.symbol,
+      symbolPosition:
+        args.settings.symbolPosition ??
+        board.settings.symbolPosition ??
+        defaultBoardSettings.symbolPosition,
+      minAllocation:
+        args.settings.minAllocation ??
+        board.settings.minAllocation ??
+        defaultBoardSettings.minAllocation,
+      maxAllocation:
+        args.settings.maxAllocation ??
+        board.settings.maxAllocation ??
+        defaultBoardSettings.maxAllocation,
     };
 
+    validateAllocationRange(nextSettings.minAllocation, nextSettings.maxAllocation);
     await ctx.db.patch(args.boardId, { settings: nextSettings });
+
+    const members = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .collect();
+
+    for (const member of members) {
+      const currentTotal = member.userPrefs?.allocationTotal ?? 100;
+      const clampedTotal = clampToAllocationRange(currentTotal, nextSettings);
+      if (currentTotal !== clampedTotal) {
+        await ctx.db.patch(member._id, {
+          userPrefs: { allocationTotal: clampedTotal },
+        });
+      }
+    }
+
+    return null;
+  },
+});
+
+/**
+ * Update user preferences for a board membership
+ */
+export const updateUserPrefs = mutation({
+  args: {
+    boardId: v.id("boards"),
+    userId: v.id("users"),
+    allocationTotal: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board_and_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.userId)
+      )
+      .unique();
+
+    if (!membership) {
+      throw new ConvexError({
+        code: "MEMBERSHIP_NOT_FOUND",
+        message: "You are not a member of this board",
+      });
+    }
+
+    const board = await ctx.db.get(args.boardId);
+    if (!board) {
+      throw new ConvexError({
+        code: "BOARD_NOT_FOUND",
+        message: "Board not found",
+      });
+    }
+
+    if (args.allocationTotal < 0) {
+      throw new ConvexError({
+        code: "INVALID_ALLOCATION_TOTAL",
+        message: "Allocation total must be non-negative",
+      });
+    }
+
+    const { minAllocation, maxAllocation } = board.settings;
+    validateAllocationRange(minAllocation, maxAllocation);
+
+    if (minAllocation > 0 && args.allocationTotal < minAllocation) {
+      throw new ConvexError({
+        code: "ALLOCATION_TOTAL_TOO_LOW",
+        message: `Allocation total must be at least ${minAllocation}`,
+      });
+    }
+
+    if (maxAllocation > 0 && args.allocationTotal > maxAllocation) {
+      throw new ConvexError({
+        code: "ALLOCATION_TOTAL_TOO_HIGH",
+        message: `Allocation total must be at most ${maxAllocation}`,
+      });
+    }
+
+    await ctx.db.patch(membership._id, {
+      userPrefs: {
+        allocationTotal: args.allocationTotal,
+      },
+    });
 
     return null;
   },

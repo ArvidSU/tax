@@ -3,6 +3,8 @@ import { Slider } from "./Slider";
 import { Breadcrumb } from "./Breadcrumb";
 import type { BreadcrumbItem } from "./Breadcrumb";
 import { CategoryCombobox } from "./CategoryCombobox";
+import { formatAmountWithSymbol } from "../utils/formatAmount";
+import type { SymbolPosition } from "../utils/formatAmount";
 import "./Body.css";
 
 interface Category {
@@ -40,6 +42,8 @@ interface BodyProps {
   canCreateCategories: boolean;
   unit: string;
   symbol: string;
+  symbolPosition: SymbolPosition;
+  allocationTotal: number;
 }
 
 export function Body({
@@ -57,6 +61,8 @@ export function Body({
   canCreateCategories,
   unit,
   symbol,
+  symbolPosition,
+  allocationTotal,
 }: BodyProps) {
   const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
   const sliderRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -88,6 +94,7 @@ export function Body({
   const totalAllocated = currentLevelCategories.reduce((sum, cat) => {
     return sum + (allocations.get(cat._id) ?? 0);
   }, 0);
+  const absoluteAllocated = (totalAllocated / 100) * allocationTotal;
 
   // Calculate dynamic max for each slider
   const calculateMax = useCallback(
@@ -196,7 +203,18 @@ export function Body({
             </span>
           )}
           <span className="allocation-unit">
-            {symbol} {unit}
+            {unit} •{" "}
+            {formatAmountWithSymbol(
+              Math.round(absoluteAllocated * 100) / 100,
+              symbol,
+              symbolPosition
+            )}{" "}
+            /{" "}
+            {formatAmountWithSymbol(
+              Math.round(allocationTotal * 100) / 100,
+              symbol,
+              symbolPosition
+            )}
           </span>
         </div>
       </div>
@@ -221,6 +239,9 @@ export function Body({
               canAddCategories={canCreateCategories}
               canDeleteCategory={canDeleteCategory(category)}
               canEditCategory={canEditCategory(category)}
+              allocationTotal={allocationTotal}
+              symbol={symbol}
+              symbolPosition={symbolPosition}
               onChange={(value) => onAllocationChange(category._id, value)}
               onClick={() => handleSliderClick(category._id)}
               onDrillDown={() => handleDrillDown(category._id)}

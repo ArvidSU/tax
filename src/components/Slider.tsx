@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState, useEffect } from "react";
+import { formatAmountWithSymbol } from "../utils/formatAmount";
+import type { SymbolPosition } from "../utils/formatAmount";
 import "./Slider.css";
 
 interface SliderProps {
@@ -13,6 +15,9 @@ interface SliderProps {
   canAddCategories?: boolean; // Whether user can add categories (show drill-down even if no children)
   canDeleteCategory?: boolean; // Whether delete action should be shown
   canEditCategory?: boolean; // Whether edit/color actions should be shown
+  allocationTotal?: number; // User's total allocation amount for absolute display
+  symbol?: string; // Unit symbol for absolute display
+  symbolPosition?: SymbolPosition; // Prefix or suffix symbol display
   onChange: (value: number) => void;
   onClick: () => void; // To toggle expansion
   onDrillDown?: () => void; // To navigate into sub-categories
@@ -36,6 +41,9 @@ export function Slider({
   canAddCategories,
   canDeleteCategory,
   canEditCategory,
+  allocationTotal,
+  symbol,
+  symbolPosition,
   onChange,
   onClick,
   onDrillDown,
@@ -238,6 +246,9 @@ export function Slider({
   // Calculate handle position (clamped to 0-100 for display)
   const displayValue = Math.min(value, 100);
   const handlePosition = `clamp(calc(var(--slider-handle-size) / 2), ${displayValue}%, calc(100% - (var(--slider-handle-size) / 2)))`;
+  const absoluteValue =
+    allocationTotal !== undefined ? (value / 100) * allocationTotal : null;
+  const showAbsolute = absoluteValue !== null && symbol && symbolPosition;
 
   return (
     <div className="slider-container">
@@ -270,6 +281,15 @@ export function Slider({
             <span className="slider-name">{name}</span>
             <div className="slider-actions">
               <span className="slider-value">{value}%</span>
+              {showAbsolute && (
+                <span className="slider-amount">
+                  {formatAmountWithSymbol(
+                    Math.round((absoluteValue ?? 0) * 100) / 100,
+                    symbol,
+                    symbolPosition
+                  )}
+                </span>
+              )}
               {(hasChildren || canAddCategories) && (
               <button
                 className="slider-drill-down"

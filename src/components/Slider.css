@@ -141,6 +141,15 @@
     transform var(--duration-fast) var(--ease-out);
 }
 
+.slider-amount {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  min-width: 56px;
+  text-align: right;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
 /* Drill-down button for categories with children */
 .slider-drill-down {
   pointer-events: auto;
@@ -421,6 +430,11 @@
   .slider-value {
     font-size: var(--font-size-sm);
     min-width: 44px;
+  }
+
+  .slider-amount {
+    min-width: 48px;
+    font-size: 11px;
   }
 
   .slider-handle {

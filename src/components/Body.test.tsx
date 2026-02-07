@@ -26,6 +26,8 @@ const defaultProps = {
   canCreateCategories: true,
   unit: 'USD',
   symbol: '$',
+  symbolPosition: 'prefix' as const,
+  allocationTotal: 100,
 };
 
 describe('Body', () => {
@@ -93,6 +95,26 @@ describe('Body', () => {
       
       const summary = document.querySelector('.allocation-summary');
       expect(summary).toHaveClass('full');
+    });
+
+    it('should base child absolute units on the current level total', () => {
+      const allocations = new Map<string, number>([
+        ['cat-4', 50],
+      ]);
+      const breadcrumbPath = [{ id: 'cat-1', name: 'Healthcare' }];
+
+      render(
+        <Body
+          {...defaultProps}
+          allocations={allocations}
+          currentParentId="cat-1"
+          breadcrumbPath={breadcrumbPath}
+          allocationTotal={100}
+        />
+      );
+
+      expect(screen.getByText('$50')).toBeInTheDocument();
+      expect(screen.getByText('USD • $50 / $100')).toBeInTheDocument();
     });
   });
 

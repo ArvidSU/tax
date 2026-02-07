@@ -9,6 +9,9 @@ const defaultBoardSettings: BoardSettings = {
   undistributedStrategy: "average",
   unit: "USD",
   symbol: "$",
+  symbolPosition: "prefix",
+  minAllocation: 0,
+  maxAllocation: 0,
 };
 
 interface BoardEntry {
@@ -19,6 +22,9 @@ interface BoardEntry {
     settings?: BoardSettings;
   };
   role: "owner" | "participant" | "viewer";
+  userPrefs: {
+    allocationTotal: number;
+  };
 }
 
 interface UseBoardsProps {
@@ -33,6 +39,7 @@ interface UseBoardsReturn {
   isLoading: boolean;
   isBoardAdmin: boolean;
   boardRole: "owner" | "participant" | "viewer" | null;
+  allocationTotal: number;
   ownerCount: number | undefined;
   isLeaveBoardDisabled: boolean;
   leaveBoardDisabledReason: string | null;
@@ -78,6 +85,7 @@ export function useBoards({
 
   const isBoardAdmin = selectedBoardEntry?.role === "owner";
   const boardRole = selectedBoardEntry?.role ?? null;
+  const allocationTotal = selectedBoardEntry?.userPrefs?.allocationTotal ?? 100;
 
   const settings = (board?.settings ?? {}) as Partial<BoardSettings>;
   const canCreateCategories =
@@ -190,6 +198,7 @@ export function useBoards({
     isLoading: boards === undefined,
     isBoardAdmin,
     boardRole,
+    allocationTotal,
     ownerCount: ownerCount as number | undefined,
     isLeaveBoardDisabled,
     leaveBoardDisabledReason,
