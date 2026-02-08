@@ -44,6 +44,7 @@ interface BodyProps {
   symbol: string;
   symbolPosition: SymbolPosition;
   allocationTotal: number;
+  readOnly?: boolean;
 }
 
 export function Body({
@@ -63,6 +64,7 @@ export function Body({
   symbol,
   symbolPosition,
   allocationTotal,
+  readOnly = false,
 }: BodyProps) {
   const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
   const sliderRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -237,13 +239,17 @@ export function Body({
               color={category.color}
               isExpanded={expandedSliderId === category._id}
               hasChildren={categoryHasChildren.has(category._id)}
-              canAddCategories={canCreateCategories}
-              canDeleteCategory={canDeleteCategory(category)}
-              canEditCategory={canEditCategory(category)}
+              canAddCategories={!readOnly && canCreateCategories}
+              canDeleteCategory={!readOnly && canDeleteCategory(category)}
+              canEditCategory={!readOnly && canEditCategory(category)}
               allocationTotal={allocationTotal}
               symbol={symbol}
               symbolPosition={symbolPosition}
-              onChange={(value) => onAllocationChange(category._id, value)}
+              readOnly={readOnly}
+              onChange={(value) => {
+                if (readOnly) return;
+                onAllocationChange(category._id, value);
+              }}
               onClick={() => handleSliderClick(category._id)}
               onDrillDown={() => handleDrillDown(category._id)}
               onDeleteCategory={() => handleDeleteCategory(category)}
@@ -261,7 +267,7 @@ export function Body({
         )}
 
         {/* Add Category Combobox */}
-        {canCreateCategories && (
+        {!readOnly && canCreateCategories && (
           <div className="add-category-section">
             <CategoryCombobox
               categories={currentLevelCategories}

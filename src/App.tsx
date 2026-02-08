@@ -80,6 +80,15 @@ function App() {
     defaultSettings: selectedBoardSettings,
   });
   const updateBoardPublic = useMutation(api.boards.updatePublic);
+  const boardMembers = useQuery(
+    api.boards.listMembers,
+    boardId && userId
+      ? {
+          boardId: boardId as Id<"boards">,
+          requesterId: userId as Id<"users">,
+        }
+      : "skip"
+  );
 
   const categories = useCategories({
     selectedBoardId: boardId,
@@ -158,6 +167,88 @@ function App() {
     currentParentId,
     currentLevelCategories,
   });
+  const [viewedMemberId, setViewedMemberId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setViewedMemberId(userId);
+  }, [boardId, userId]);
+
+  const memberViewOptions = useMemo(() => {
+    const fromBoard = (boardMembers ?? []).map((member) => ({
+      userId: member.userId.toString(),
+      name: member.name,
+      email: member.email,
+      role: member.role,
+      allocationTotal: member.allocationTotal,
+    }));
+
+    if (!userId || !user) {
+      return fromBoard;
+    }
+
+    if (fromBoard.some((member) => member.userId === userId)) {
+      return fromBoard;
+    }
+
+    return [
+      {
+        userId,
+        name: user.name,
+        email: user.email,
+        role: boards.boardRole ?? "viewer",
+        allocationTotal: boards.allocationTotal,
+      },
+      ...fromBoard,
+    ];
+  }, [
+    boardMembers,
+    boards.allocationTotal,
+    boards.boardRole,
+    user,
+    userId,
+  ]);
+
+  useEffect(() => {
+    if (!userId || memberViewOptions.length === 0) return;
+
+    const nextViewedId = viewedMemberId ?? userId;
+    const exists = memberViewOptions.some((member) => member.userId === nextViewedId);
+    if (!exists) {
+      setViewedMemberId(userId);
+    }
+  }, [memberViewOptions, userId, viewedMemberId]);
+
+  const viewedMember = useMemo(() => {
+    const targetId = viewedMemberId ?? userId;
+    if (!targetId) return null;
+    return memberViewOptions.find((member) => member.userId === targetId) ?? null;
+  }, [memberViewOptions, userId, viewedMemberId]);
+
+  const viewedUserId = viewedMember?.userId ?? userId;
+  const isViewingOwnAllocations = !!userId && viewedUserId === userId;
+  const viewedMemberAllocationsRaw = useQuery(
+    api.distributions.getByBoardAndUser,
+    boardId && viewedUserId && !isViewingOwnAllocations
+      ? {
+          boardId: boardId as Id<"boards">,
+          userId: viewedUserId as Id<"users">,
+        }
+      : "skip"
+  );
+  const viewedAllocations = useMemo(() => {
+    if (isViewingOwnAllocations) {
+      return allocations.allocations;
+    }
+
+    const next = new Map<string, number>();
+    for (const allocation of viewedMemberAllocationsRaw ?? []) {
+      next.set(allocation.categoryId.toString(), allocation.percentage);
+    }
+    return next;
+  }, [allocations.allocations, isViewingOwnAllocations, viewedMemberAllocationsRaw]);
+  const viewedMemberAllocationTotal = viewedMember?.allocationTotal ?? boards.allocationTotal;
+  const isLoadingViewedAllocations =
+    !isViewingOwnAllocations && viewedMemberAllocationsRaw === undefined;
 
   const categoryById = useMemo(
     () =>
@@ -168,7 +259,7 @@ function App() {
   );
 
   const currentLevelAllocationTotal = useMemo(() => {
-    if (!currentParentId) return boards.allocationTotal;
+    if (!currentParentId) return viewedMemberAllocationTotal;
 
     const visited = new Set<string>();
     let cursor: string | undefined = currentParentId;
@@ -185,13 +276,18 @@ function App() {
         return 0;
       }
 
-      const ownPercentage = allocations.allocations.get(cursor) ?? 0;
+      const ownPercentage = viewedAllocations.get(cursor) ?? 0;
       effectivePercentage = (effectivePercentage * ownPercentage) / 100;
       cursor = category.parentId;
     }
 
-    return (boards.allocationTotal * effectivePercentage) / 100;
-  }, [allocations.allocations, boards.allocationTotal, categoryById, currentParentId]);
+    return (viewedMemberAllocationTotal * effectivePercentage) / 100;
+  }, [
+    categoryById,
+    currentParentId,
+    viewedAllocations,
+    viewedMemberAllocationTotal,
+  ]);
 
   const invites = useInvites({
     userId,
@@ -657,25 +753,63 @@ function App() {
 
           {boardId && boards.board && (
             <section className="workspace-sliders-panel">
-              <Body
-                key={currentParentId ?? "root"}
-                categories={categories.visibleCategories}
-                allocations={allocations.allocations}
-                currentParentId={currentParentId}
-                breadcrumbPath={breadcrumbPath}
-                onAllocationChange={allocations.handleAllocationChange}
-                onNavigate={setCurrentParentId}
-                onCreateCategory={categories.createCategory}
-                onDeleteCategory={categories.deleteCategory}
-                onUpdateCategory={categories.updateCategory}
-                canDeleteCategory={canDeleteCategory}
-                canEditCategory={canEditCategory}
-                canCreateCategories={boards.canCreateCategories}
-                unit={boardSettings.settings.unit}
-                symbol={boardSettings.settings.symbol}
-                symbolPosition={boardSettings.settings.symbolPosition}
-                allocationTotal={currentLevelAllocationTotal}
-              />
+              <div className="allocation-view-toolbar">
+                <label className="allocation-view-select">
+                  View allocations for
+                  <select
+                    value={viewedUserId ?? userId ?? ""}
+                    onChange={(e) => setViewedMemberId(e.target.value)}
+                    disabled={memberViewOptions.length === 0}
+                    aria-label="Select board member allocations to view"
+                  >
+                    {memberViewOptions.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.name}
+                        {member.userId === userId ? " (you)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {!isViewingOwnAllocations && userId && (
+                  <button
+                    className="ghost-button"
+                    onClick={() => setViewedMemberId(userId)}
+                  >
+                    Back to my allocations
+                  </button>
+                )}
+              </div>
+              {!isViewingOwnAllocations && viewedMember && (
+                <p className="allocation-readonly-note">
+                  Viewing {viewedMember.name}&apos;s allocations in read-only mode.
+                </p>
+              )}
+              {isLoadingViewedAllocations ? (
+                <div className="allocation-loading-state">
+                  <Loading message="Loading member allocations..." />
+                </div>
+              ) : (
+                <Body
+                  key={currentParentId ?? "root"}
+                  categories={categories.visibleCategories}
+                  allocations={viewedAllocations}
+                  currentParentId={currentParentId}
+                  breadcrumbPath={breadcrumbPath}
+                  onAllocationChange={allocations.handleAllocationChange}
+                  onNavigate={setCurrentParentId}
+                  onCreateCategory={categories.createCategory}
+                  onDeleteCategory={categories.deleteCategory}
+                  onUpdateCategory={categories.updateCategory}
+                  canDeleteCategory={canDeleteCategory}
+                  canEditCategory={canEditCategory}
+                  canCreateCategories={boards.canCreateCategories}
+                  unit={boardSettings.settings.unit}
+                  symbol={boardSettings.settings.symbol}
+                  symbolPosition={boardSettings.settings.symbolPosition}
+                  allocationTotal={currentLevelAllocationTotal}
+                  readOnly={!isViewingOwnAllocations}
+                />
+              )}
             </section>
           )}
         </section>

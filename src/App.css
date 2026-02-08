@@ -486,6 +486,47 @@ details:not([open]) > .board-settings-summary::after {
   overflow: hidden;
 }
 
+.allocation-view-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+}
+
+.allocation-view-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.allocation-view-select select {
+  min-width: 280px;
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.allocation-readonly-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface));
+}
+
+.allocation-loading-state {
+  padding: var(--space-6) var(--space-4);
+}
+
 .board-empty {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
@@ -514,5 +555,14 @@ details:not([open]) > .board-settings-summary::after {
   .invite-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .allocation-view-select {
+    width: 100%;
+  }
+
+  .allocation-view-select select {
+    min-width: 0;
+    width: 100%;
   }
 }

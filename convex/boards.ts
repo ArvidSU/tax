@@ -57,6 +57,14 @@ const boardWithRoleValidator = v.object({
   userPrefs: boardMemberPrefsValidator,
 });
 
+const boardMemberSummaryValidator = v.object({
+  userId: v.id("users"),
+  name: v.string(),
+  email: v.string(),
+  role: v.union(v.literal("owner"), v.literal("participant"), v.literal("viewer")),
+  allocationTotal: v.number(),
+});
+
 const validateAllocationRange = (minAllocation: number, maxAllocation: number) => {
   if (minAllocation < 0 || maxAllocation < 0) {
     throw new ConvexError({
@@ -390,6 +398,63 @@ export const getOwnerCount = query({
       .filter((q) => q.eq(q.field("role"), "owner"))
       .collect();
     return owners.length;
+  },
+});
+
+/**
+ * List board members with user details for allocation viewing
+ */
+export const listMembers = query({
+  args: {
+    boardId: v.id("boards"),
+    requesterId: v.id("users"),
+  },
+  returns: v.array(boardMemberSummaryValidator),
+  handler: async (ctx, args) => {
+    const requesterMembership = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board_and_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.requesterId)
+      )
+      .unique();
+
+    if (!requesterMembership) {
+      throw new ConvexError({
+        code: "MEMBERSHIP_NOT_FOUND",
+        message: "You are not a member of this board",
+      });
+    }
+
+    const board = await ctx.db.get(args.boardId);
+    if (!board) {
+      throw new ConvexError({
+        code: "BOARD_NOT_FOUND",
+        message: "Board not found",
+      });
+    }
+
+    const members = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .collect();
+
+    const results = [];
+    for (const member of members) {
+      const user = await ctx.db.get(member.userId);
+      if (!user) continue;
+      results.push({
+        userId: member.userId,
+        name: user.name,
+        email: user.email,
+        role: member.role,
+        allocationTotal: clampToAllocationRange(
+          member.userPrefs?.allocationTotal ?? 100,
+          board.settings
+        ),
+      });
+    }
+
+    return results.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 

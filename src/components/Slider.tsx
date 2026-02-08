@@ -18,6 +18,7 @@ interface SliderProps {
   allocationTotal?: number; // User's total allocation amount for absolute display
   symbol?: string; // Unit symbol for absolute display
   symbolPosition?: SymbolPosition; // Prefix or suffix symbol display
+  readOnly?: boolean; // Disable allocation editing while preserving navigation
   onChange: (value: number) => void;
   onClick: () => void; // To toggle expansion
   onDrillDown?: () => void; // To navigate into sub-categories
@@ -44,6 +45,7 @@ export function Slider({
   allocationTotal,
   symbol,
   symbolPosition,
+  readOnly = false,
   onChange,
   onClick,
   onDrillDown,
@@ -101,6 +103,7 @@ export function Slider({
   // Handle pointer down on the drag handle
   const handleHandlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      if (readOnly) return;
       // Only handle left mouse button or touch
       if (e.button !== 0 && e.pointerType === "mouse") return;
 
@@ -111,24 +114,26 @@ export function Slider({
       const handleElement = e.currentTarget;
       handleElement.setPointerCapture(e.pointerId);
     },
-    []
+    [readOnly]
   );
 
   // Handle pointer move during drag
   const handleHandlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      if (readOnly) return;
       if (!isDragging) return;
 
       e.preventDefault();
       const newValue = calculateValue(e.clientX);
       onChange(newValue);
     },
-    [isDragging, calculateValue, onChange]
+    [isDragging, calculateValue, onChange, readOnly]
   );
 
   // Handle pointer up to end drag
   const handleHandlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      if (readOnly) return;
       if (!isDragging) return;
 
       e.preventDefault();
@@ -139,12 +144,21 @@ export function Slider({
         setIsDragging(false);
       }, 10);
     },
-    [isDragging]
+    [isDragging, readOnly]
   );
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick();
+        return;
+      }
+      if (readOnly) {
+        return;
+      }
+
       let newValue = value;
       const step = e.shiftKey ? 10 : 1;
 
@@ -167,11 +181,6 @@ export function Slider({
           e.preventDefault();
           newValue = max;
           break;
-        case "Enter":
-        case " ":
-          e.preventDefault();
-          onClick();
-          return;
         default:
           return;
       }
@@ -180,7 +189,7 @@ export function Slider({
         onChange(newValue);
       }
     },
-    [value, max, onChange, onClick]
+    [max, onChange, onClick, readOnly, value]
   );
 
   // Handle drill-down button click
@@ -254,13 +263,14 @@ export function Slider({
     <div className="slider-container">
       <div
         ref={barRef}
-        className="slider-bar"
+        className={`slider-bar ${readOnly ? "read-only" : ""}`}
         style={{ "--slider-color": selectedColor } as React.CSSProperties}
         role="slider"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={value}
         aria-valuetext={`${name}: ${value}%`}
+        aria-readonly={readOnly}
         aria-label={`${name} allocation slider`}
         aria-expanded={isExpanded}
         aria-describedby={isExpanded ? `${id}-description` : undefined}
@@ -305,7 +315,9 @@ export function Slider({
 
         {/* Draggable handle */}
         <div
-          className={`slider-handle ${isDragging ? "dragging" : ""}`}
+          className={`slider-handle ${isDragging ? "dragging" : ""} ${
+            readOnly ? "read-only" : ""
+          }`}
           style={{ left: handlePosition }}
           onPointerDown={handleHandlePointerDown}
           onPointerMove={handleHandlePointerMove}

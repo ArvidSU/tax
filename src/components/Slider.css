@@ -53,6 +53,15 @@
     var(--shadow-md);
 }
 
+.slider-bar.read-only {
+  cursor: default;
+}
+
+.slider-bar.read-only:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--slider-color, var(--color-border));
+}
+
 /* ============================================
    Fill Bar (Progress Indicator)
    ============================================ */
@@ -257,6 +266,11 @@
 
 .slider-handle.dragging::before {
   transform: translate(-50%, -50%) scale(1.5);
+}
+
+.slider-handle.read-only {
+  cursor: default;
+  pointer-events: none;
 }
 
 /* ============================================
