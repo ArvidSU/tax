@@ -15,6 +15,7 @@ import { useAllocations } from "./features/allocations/hooks/useAllocations";
 import { useInvites } from "./features/invites/hooks/useInvites";
 import { UserAllocationPrefs } from "./features/allocations/components/UserAllocationPrefs";
 import { Body } from "./components/Body";
+import type { AllocationAggregate } from "./types";
 import "./App.css";
 
 type ThemeMode = "auto" | "light" | "dark";
@@ -249,6 +250,29 @@ function App() {
   const viewedMemberAllocationTotal = viewedMember?.allocationTotal ?? boards.allocationTotal;
   const isLoadingViewedAllocations =
     !isViewingOwnAllocations && viewedMemberAllocationsRaw === undefined;
+  const levelAggregatesRaw = useQuery(
+    api.distributions.getAggregatesByBoardAndParent,
+    boardId
+      ? {
+          boardId: boardId as Id<"boards">,
+          parentId: currentParentId
+            ? (currentParentId as Id<"categories">)
+            : undefined,
+        }
+      : "skip"
+  );
+  const levelAggregates = useMemo<AllocationAggregate[]>(
+    () =>
+      (levelAggregatesRaw ?? []).map((aggregate) => ({
+        categoryId: aggregate.categoryId.toString(),
+        averagePercentage: aggregate.averagePercentage,
+        averageAmount: aggregate.averageAmount,
+        totalAmount: aggregate.totalAmount,
+        totalResponses: aggregate.totalResponses,
+      })),
+    [levelAggregatesRaw]
+  );
+  const statisticsParticipantCount = memberViewOptions.length;
 
   const categoryById = useMemo(
     () =>
@@ -807,6 +831,9 @@ function App() {
                   symbol={boardSettings.settings.symbol}
                   symbolPosition={boardSettings.settings.symbolPosition}
                   allocationTotal={currentLevelAllocationTotal}
+                  statisticsAggregates={levelAggregates}
+                  statisticsParticipantCount={statisticsParticipantCount}
+                  isStatisticsLoading={levelAggregatesRaw === undefined}
                   readOnly={!isViewingOwnAllocations}
                 />
               )}

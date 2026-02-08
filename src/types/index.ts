@@ -51,6 +51,14 @@ export interface Allocation {
   percentage: number;
 }
 
+export interface AllocationAggregate {
+  categoryId: string;
+  averagePercentage: number;
+  averageAmount: number;
+  totalAmount: number;
+  totalResponses: number;
+}
+
 export interface Invite {
   inviteId: string;
   boardId: string;

@@ -5,6 +5,8 @@ import type { BreadcrumbItem } from "./Breadcrumb";
 import { CategoryCombobox } from "./CategoryCombobox";
 import { formatAmountWithSymbol } from "../utils/formatAmount";
 import type { SymbolPosition } from "../utils/formatAmount";
+import { AllocationStatistics } from "../features/statistics/components/AllocationStatistics";
+import type { AllocationAggregate } from "../types";
 import "./Body.css";
 
 interface Category {
@@ -44,6 +46,9 @@ interface BodyProps {
   symbol: string;
   symbolPosition: SymbolPosition;
   allocationTotal: number;
+  statisticsAggregates: AllocationAggregate[];
+  statisticsParticipantCount: number;
+  isStatisticsLoading?: boolean;
   readOnly?: boolean;
 }
 
@@ -64,6 +69,9 @@ export function Body({
   symbol,
   symbolPosition,
   allocationTotal,
+  statisticsAggregates,
+  statisticsParticipantCount,
+  isStatisticsLoading = false,
   readOnly = false,
 }: BodyProps) {
   const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
@@ -283,6 +291,16 @@ export function Body({
           </div>
         )}
       </div>
+
+      <AllocationStatistics
+        categories={currentLevelCategories}
+        aggregates={statisticsAggregates}
+        participantCount={statisticsParticipantCount}
+        unit={unit}
+        symbol={symbol}
+        symbolPosition={symbolPosition}
+        isLoading={isStatisticsLoading}
+      />
 
       {/* Level info */}
       <div className="level-info">

@@ -28,6 +28,8 @@ const defaultProps = {
   symbol: '$',
   symbolPosition: 'prefix' as const,
   allocationTotal: 100,
+  statisticsAggregates: [],
+  statisticsParticipantCount: 0,
 };
 
 describe('Body', () => {
