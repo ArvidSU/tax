@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { Loading } from "./components/ui/Loading";
@@ -79,6 +79,7 @@ function App() {
     isAdmin: boards.isBoardAdmin,
     defaultSettings: selectedBoardSettings,
   });
+  const updateBoardPublic = useMutation(api.boards.updatePublic);
 
   const categories = useCategories({
     selectedBoardId: boardId,
@@ -205,6 +206,7 @@ function App() {
   const [showInvites, setShowInvites] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"owner" | "participant" | "viewer">("viewer");
+  const [isUpdatingBoardPublic, setIsUpdatingBoardPublic] = useState(false);
 
   const handleAuthSuccess = useCallback(
     (id: string) => {
@@ -230,6 +232,23 @@ function App() {
     setInviteEmail("");
     setInviteRole("viewer");
   }, [invites, inviteEmail, inviteRole]);
+
+  const handleToggleBoardPublic = useCallback(
+    async (nextPublic: boolean) => {
+      if (!boardId || !userId || !boards.isBoardAdmin) return;
+      setIsUpdatingBoardPublic(true);
+      try {
+        await updateBoardPublic({
+          boardId: boardId as Id<"boards">,
+          userId: userId as Id<"users">,
+          public: nextPublic,
+        });
+      } finally {
+        setIsUpdatingBoardPublic(false);
+      }
+    },
+    [boardId, userId, boards.isBoardAdmin, updateBoardPublic]
+  );
 
   const canDeleteCategory = useCallback(
     (category: { createdBy?: string }) =>
@@ -448,6 +467,15 @@ function App() {
                                 participantsCanCreateCategories: e.target.checked,
                               })
                             }
+                          />
+                        </label>
+                        <label className="setting-toggle">
+                          <span>Public board</span>
+                          <input
+                            type="checkbox"
+                            checked={boards.board.public}
+                            disabled={isUpdatingBoardPublic}
+                            onChange={(e) => void handleToggleBoardPublic(e.target.checked)}
                           />
                         </label>
                         <label>

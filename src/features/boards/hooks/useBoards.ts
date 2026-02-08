@@ -19,6 +19,7 @@ interface BoardEntry {
     _id: string;
     name: string;
     description: string;
+    public: boolean;
     settings?: BoardSettings;
   };
   role: "owner" | "participant" | "viewer";

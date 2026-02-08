@@ -258,6 +258,44 @@ export const updateSettings = mutation({
 });
 
 /**
+ * Update board visibility (owner only)
+ */
+export const updatePublic = mutation({
+  args: {
+    boardId: v.id("boards"),
+    userId: v.id("users"),
+    public: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("boardMembers")
+      .withIndex("by_board_and_user", (q) =>
+        q.eq("boardId", args.boardId).eq("userId", args.userId)
+      )
+      .unique();
+
+    if (!membership || membership.role !== "owner") {
+      throw new ConvexError({
+        code: "NOT_AUTHORIZED",
+        message: "Only board owners can update board visibility",
+      });
+    }
+
+    const board = await ctx.db.get(args.boardId);
+    if (!board) {
+      throw new ConvexError({
+        code: "BOARD_NOT_FOUND",
+        message: "Board not found",
+      });
+    }
+
+    await ctx.db.patch(args.boardId, { public: args.public });
+    return null;
+  },
+});
+
+/**
  * Update user preferences for a board membership
  */
 export const updateUserPrefs = mutation({
