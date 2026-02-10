@@ -97,10 +97,10 @@ export const upsertLevel = mutation({
       return total + allocation.percentage;
     }, 0);
 
-    if (Math.abs(sum - 100) > 0.01) {
+    if (sum > 100.01) {
       throw new ConvexError({
         code: "INVALID_ALLOCATION_SUM",
-        message: `Allocations must sum to 100%, got ${sum}%`,
+        message: `Allocations cannot exceed 100%, got ${sum}%`,
       });
     }
 

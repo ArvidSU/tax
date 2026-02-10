@@ -42,24 +42,18 @@ export function useAllocations({
 
   const upsertDistributionLevel = useMutation(api.distributions.upsertLevel);
 
-  // Use a microtask to avoid setState during render issues
   useEffect(() => {
     if (!allocationsRaw || !boardId || !userId) return;
     
     const allocationKey = `${boardId}-${userId}`;
     if (lastKeyRef.current === allocationKey) return;
-    
-    // Schedule state update in next tick to avoid setState-in-render warning
-    const timeoutId = setTimeout(() => {
-      lastKeyRef.current = allocationKey;
-      const nextAllocations = new Map<string, number>();
-      for (const allocation of allocationsRaw) {
-        nextAllocations.set(allocation.categoryId, allocation.percentage);
-      }
-      setAllocations(nextAllocations);
-    }, 0);
 
-    return () => clearTimeout(timeoutId);
+    lastKeyRef.current = allocationKey;
+    const nextAllocations = new Map<string, number>();
+    for (const allocation of allocationsRaw) {
+      nextAllocations.set(allocation.categoryId, allocation.percentage);
+    }
+    setAllocations(nextAllocations);
   }, [allocationsRaw, boardId, userId]);
 
   useEffect(() => {
@@ -115,7 +109,7 @@ export function useAllocations({
             0
           );
 
-          if (total === 100) {
+          if (total <= 100) {
             upsertDistributionLevel({
               boardId: boardId as Id<"boards">,
               userId: userId as Id<"users">,

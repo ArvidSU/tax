@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Body } from './Body';
 
 const mockCategories = [
@@ -55,6 +55,21 @@ describe('Body', () => {
       render(<Body {...defaultProps} currentParentId="cat-3" />);
       
       expect(screen.getByText('No sub-categories available')).toBeInTheDocument();
+    });
+
+    it('should render share button when share handler is provided', () => {
+      render(<Body {...defaultProps} onShareBoard={vi.fn()} />);
+
+      expect(screen.getByRole('button', { name: 'Share board' })).toBeInTheDocument();
+    });
+
+    it('should trigger share callback when share button is clicked', () => {
+      const onShareBoard = vi.fn();
+      render(<Body {...defaultProps} onShareBoard={onShareBoard} />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Share board' }));
+
+      expect(onShareBoard).toHaveBeenCalledTimes(1);
     });
   });
 

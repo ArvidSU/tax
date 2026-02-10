@@ -327,6 +327,7 @@ function App() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"owner" | "participant" | "viewer">("viewer");
   const [isUpdatingBoardPublic, setIsUpdatingBoardPublic] = useState(false);
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">("idle");
 
   const handleAuthSuccess = useCallback(
     (id: string) => {
@@ -339,6 +340,15 @@ function App() {
     clearSession();
     setCurrentParentId(null);
   }, [clearSession]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const sharedBoardId = new URLSearchParams(window.location.search).get("board");
+    if (!sharedBoardId) return;
+
+    setBoardId(sharedBoardId);
+  }, [setBoardId]);
 
   const handleCreateBoard = useCallback(async () => {
     await boards.createBoard(newBoardName, newBoardDescription);
@@ -369,6 +379,68 @@ function App() {
     },
     [boardId, userId, boards.isBoardAdmin, updateBoardPublic]
   );
+
+  const canShareBoardLink = useMemo(() => {
+    if (!boardId || !boards.board || !boards.boardRole) {
+      return false;
+    }
+
+    if (boards.board.public) {
+      return true;
+    }
+
+    return boards.boardRole === "owner" || boards.boardRole === "participant";
+  }, [boardId, boards.board, boards.boardRole]);
+
+  const shareDisabledReason = useMemo(() => {
+    if (!boardId || !boards.board) {
+      return "Select a board to share";
+    }
+    if (canShareBoardLink) {
+      return undefined;
+    }
+    return "Only owners or participants can share private board links";
+  }, [boardId, boards.board, canShareBoardLink]);
+
+  const handleShareBoard = useCallback(async () => {
+    if (!boardId || !canShareBoardLink) return;
+
+    if (typeof window === "undefined") return;
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("board", boardId);
+    const shareUrl = nextUrl.toString();
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const input = document.createElement("input");
+        input.value = shareUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      setShareStatus("copied");
+    } catch {
+      setShareStatus("error");
+    }
+  }, [boardId, canShareBoardLink]);
+
+  useEffect(() => {
+    if (shareStatus === "idle") return;
+
+    const timeout = window.setTimeout(() => {
+      setShareStatus("idle");
+    }, 2000);
+
+    return () => window.clearTimeout(timeout);
+  }, [shareStatus]);
+
+  useEffect(() => {
+    setShareStatus("idle");
+  }, [boardId]);
 
   const canDeleteCategory = useCallback(
     (category: { createdBy?: string }) =>
@@ -835,6 +907,16 @@ function App() {
                   statisticsParticipantCount={statisticsParticipantCount}
                   isStatisticsLoading={levelAggregatesRaw === undefined}
                   readOnly={!isViewingOwnAllocations}
+                  onShareBoard={handleShareBoard}
+                  shareButtonLabel={
+                    shareStatus === "copied"
+                      ? "Link copied"
+                      : shareStatus === "error"
+                        ? "Copy failed"
+                        : "Share board"
+                  }
+                  isShareDisabled={!canShareBoardLink}
+                  shareDisabledReason={shareDisabledReason}
                 />
               )}
             </section>

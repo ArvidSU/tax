@@ -50,6 +50,10 @@ interface BodyProps {
   statisticsParticipantCount: number;
   isStatisticsLoading?: boolean;
   readOnly?: boolean;
+  onShareBoard?: () => void;
+  shareButtonLabel?: string;
+  isShareDisabled?: boolean;
+  shareDisabledReason?: string;
 }
 
 export function Body({
@@ -73,6 +77,10 @@ export function Body({
   statisticsParticipantCount,
   isStatisticsLoading = false,
   readOnly = false,
+  onShareBoard,
+  shareButtonLabel = "Share board",
+  isShareDisabled = false,
+  shareDisabledReason,
 }: BodyProps) {
   const [expandedSliderId, setExpandedSliderId] = useState<string | null>(null);
   const sliderRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -193,8 +201,21 @@ export function Body({
     <div className="body-container" ref={containerRef}>
       {/* Allocation Summary */}
       <div className={`allocation-summary ${allocationStatus}`}>
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb path={breadcrumbPath} onNavigate={onNavigate} />
+        <div className="allocation-summary-header">
+          {/* Breadcrumb Navigation */}
+          <Breadcrumb path={breadcrumbPath} onNavigate={onNavigate} />
+          {onShareBoard && (
+            <button
+              type="button"
+              className="share-board-button"
+              onClick={onShareBoard}
+              disabled={isShareDisabled}
+              title={shareDisabledReason}
+            >
+              {shareButtonLabel}
+            </button>
+          )}
+        </div>
 
         <div className="allocation-bar-container">
           <div

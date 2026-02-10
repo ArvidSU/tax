@@ -5,9 +5,9 @@ import { ConvexError } from "convex/values";
 const defaultBoardSettings = {
   participantsCanCreateCategories: true,
   undistributedStrategy: "average" as const,
-  unit: "USD",
-  symbol: "$",
-  symbolPosition: "prefix" as const,
+  unit: "Kronor",
+  symbol: " SEK",
+  symbolPosition: "suffix" as const,
   minAllocation: 0,
   maxAllocation: 0,
 };

@@ -51,6 +51,35 @@
     transform var(--duration-normal) var(--ease-out);
 }
 
+.allocation-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.share-board-button {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.share-board-button:hover:not(:disabled) {
+  border-color: var(--color-primary-300);
+  color: var(--color-text);
+}
+
+.share-board-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* Subtle hover effect */
 .allocation-summary:hover {
   box-shadow: var(--shadow-md);

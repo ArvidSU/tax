@@ -363,7 +363,7 @@ describe("useAllocations", () => {
       });
     });
 
-    it.skip("should only save when total reaches 100%", async () => {
+    it("should save partial allocations below 100%", async () => {
       const { result } = renderHook(() =>
         useAllocations({
           userId: "user-1",
@@ -373,7 +373,7 @@ describe("useAllocations", () => {
         })
       );
 
-      // Set partial allocation (not 100%)
+      // Set partial allocation (<100%)
       act(() => {
         result.current.handleAllocationChange("cat-1", 40);
       });
@@ -385,22 +385,6 @@ describe("useAllocations", () => {
         await Promise.resolve();
       });
 
-      // Should NOT call mutation when total is not 100%
-      expect(mockUpsertMutation).not.toHaveBeenCalled();
-
-      // Now set total to 100%
-      act(() => {
-        result.current.handleAllocationChange("cat-2", 60);
-      });
-
-      vi.advanceTimersByTime(350);
-      
-      await act(async () => {
-        vi.runAllTimers();
-        await Promise.resolve();
-      });
-
-      // Now should call mutation with 100% allocation
       await waitFor(() => {
         expect(mockUpsertMutation).toHaveBeenCalledTimes(1);
       });
@@ -411,7 +395,6 @@ describe("useAllocations", () => {
         parentId: undefined,
         allocations: [
           { categoryId: "cat-1", percentage: 40 },
-          { categoryId: "cat-2", percentage: 60 },
         ],
       });
     });
