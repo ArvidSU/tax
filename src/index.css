@@ -219,9 +219,26 @@
 }
 
 /* ─────────────────────────────────────────
+   Smooth Theme Transitions
+   ───────────────────────────────────────── */
+
+/* Enable smooth transitions for all color properties when theme changes */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color var(--duration-slow) var(--ease-out),
+    color var(--duration-slow) var(--ease-out),
+    border-color var(--duration-slow) var(--ease-out),
+    box-shadow var(--duration-slow) var(--ease-out),
+    fill var(--duration-slow) var(--ease-out),
+    stroke var(--duration-slow) var(--ease-out) !important;
+}
+
+/* ─────────────────────────────────────────
    Light Mode Theme
    ───────────────────────────────────────── */
-   
+
 [data-theme="light"],
 .light-mode {
   --color-background: #f8fafc;

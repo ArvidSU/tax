@@ -153,6 +153,9 @@ function App() {
 
     const root = document.documentElement;
 
+    // Add transition class for smooth theme change
+    root.classList.add("theme-transition");
+
     if (themeMode === "auto") {
       root.removeAttribute("data-theme");
     } else {
@@ -160,6 +163,13 @@ function App() {
     }
 
     window.localStorage.setItem(themeStorageKey, themeMode);
+
+    // Remove transition class after transition completes
+    const timeout = window.setTimeout(() => {
+      root.classList.remove("theme-transition");
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
   }, [themeMode]);
 
   const allocations = useAllocations({
